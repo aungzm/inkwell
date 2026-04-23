@@ -32,6 +32,7 @@ type UseStrokesOptions = {
   tool: 'pencil' | 'eraser';
   strokeColor: string;
   strokeSize: number;
+  onErasePoint?: (point: { x: number; y: number }) => void;
 };
 
 const getStrokeOptions = (size: number) => ({
@@ -47,6 +48,7 @@ export function useStrokes({
   tool,
   strokeColor,
   strokeSize,
+  onErasePoint,
 }: UseStrokesOptions) {
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -110,6 +112,7 @@ export function useStrokes({
     const radius = Math.max(10, strokeSize);
     const radiusSquared = radius * radius;
 
+    onErasePoint?.(point);
     setStrokes((current) =>
       current.filter(
         (stroke) =>

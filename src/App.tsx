@@ -1,9 +1,7 @@
-import { useReducer, useState } from 'react';
-import { solveMath } from './solver/solve';
+import { useState } from 'react';
 import { validateVlmResult } from './solver/validate';
-import { appReducer, initialAppState } from './state/reducer';
-import type { RasterizedRow, VLMResult } from './types';
-import { Feed } from './ui/Feed';
+import type { RasterizedRow } from './types';
+import { SheetSurface } from './ui/SheetSurface';
 import { DemoLfm25Adapter } from './vlm/lfm25';
 
 const demoAdapter = new DemoLfm25Adapter();
@@ -15,54 +13,15 @@ const MODEL_OPTIONS = [
 const COLOR_OPTIONS = ['#14253d', '#2f80ed', '#1f9d55', '#d97706', '#c2410c', '#be185d'];
 
 export default function App() {
-  const [state, dispatch] = useReducer(appReducer, initialAppState);
   const [tool, setTool] = useState<'pencil' | 'eraser'>('pencil');
   const [strokeSize, setStrokeSize] = useState(14);
   const [strokeColor, setStrokeColor] = useState(COLOR_OPTIONS[0]);
+  const [activeModelId, setActiveModelId] = useState<(typeof MODEL_OPTIONS)[number]['id']>(
+    MODEL_OPTIONS[0].id,
+  );
 
-  const handleSubmit = async (rowId: string, image: RasterizedRow) => {
-    dispatch({ type: 'row/submitted', rowId, image });
-    let recognized: VLMResult | undefined;
-
-    try {
-      recognized = validateVlmResult(await demoAdapter.transcribe(image));
-      const solverResult = solveMath(recognized.latex, recognized.intent);
-      dispatch({
-        type: 'row/parsed',
-        rowId,
-        vlmResult: recognized,
-        solverResult,
-      });
-    } catch (error) {
-      dispatch({
-        type: 'row/errored',
-        rowId,
-        vlmResult: recognized,
-        error:
-          error instanceof Error
-            ? error.message
-            : 'An unknown error occurred during row processing.',
-      });
-    }
-  };
-
-  const handleSaveEdit = (rowId: string, latex: string) => {
-    const row = state.rows.find((entry) => entry.id === rowId);
-    try {
-      const solverResult = solveMath(latex, row?.vlmResult?.intent);
-      dispatch({ type: 'row/save-edit', rowId, latex, solverResult });
-    } catch (error) {
-      dispatch({
-        type: 'row/errored',
-        rowId,
-        vlmResult: row?.vlmResult,
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Unable to solve the edited LaTeX.',
-      });
-    }
-  };
+  const handleInterpret = async (image: RasterizedRow) =>
+    validateVlmResult(await demoAdapter.transcribe(image));
 
   return (
     <main className="app-shell">
@@ -144,9 +103,9 @@ export default function App() {
               <select
                 id="model-select"
                 className="model-select"
-                value={state.settings.activeModelId}
+                value={activeModelId}
                 onChange={(event) =>
-                  dispatch({ type: 'settings/set-model', modelId: event.target.value })
+                  setActiveModelId(event.target.value as (typeof MODEL_OPTIONS)[number]['id'])
                 }
               >
                 {MODEL_OPTIONS.map((model) => (
@@ -159,12 +118,9 @@ export default function App() {
           </div>
 
           <div className="paper-line live-paper-line">
-            <Feed
-              rows={state.rows}
-              onSubmit={handleSubmit}
-              onRedraw={(rowId) => dispatch({ type: 'row/redraw', rowId })}
-              onStartEdit={(rowId) => dispatch({ type: 'row/start-edit', rowId })}
-              onSaveEdit={handleSaveEdit}
+            <SheetSurface
+              adapter={demoAdapter}
+              onValidateResult={handleInterpret}
               tool={tool}
               strokeColor={strokeColor}
               strokeSize={strokeSize}

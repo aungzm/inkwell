@@ -239,7 +239,7 @@ button:hover:not(:disabled) {
 .paper-line {
   position: relative;
   min-height: 78vh;
-  padding: 28px;
+  padding: 18px;
   border: 1px solid #dce7f2;
   border-radius: 22px;
   background:
@@ -253,25 +253,51 @@ button:hover:not(:disabled) {
   min-height: 78vh;
 }
 
-.latex-preview {
-  display: inline-flex;
-  align-items: center;
-  min-height: 92px;
-  padding: 16px 20px;
-  border-radius: 16px;
-  background: #ffffff;
-  color: var(--text);
-  font-size: 1.8rem;
-}
-
-.feed-list {
+.sheet-surface-shell {
   display: grid;
-  gap: 0;
+  gap: 12px;
+  min-height: calc(78vh - 36px);
 }
 
-.sheet-entry {
-  min-width: 0;
-  padding-bottom: 16px;
+.sheet-surface {
+  position: relative;
+  min-height: calc(78vh - 88px);
+}
+
+.sheet-overlay-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.sheet-placement {
+  position: absolute;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: 0;
+  pointer-events: none;
+}
+
+.placement-pending,
+.placement-error {
+  padding: 4px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 6px 14px rgba(62, 96, 130, 0.08);
+}
+
+.placement-status {
+  margin: 0;
+  color: #7088a0;
+  font-size: 0.95rem;
+}
+
+.placement-error {
+  color: var(--danger-text);
+}
+
+.placement-error p {
+  margin: 0;
 }
 
 .ink-canvas {
@@ -293,18 +319,6 @@ button:hover:not(:disabled) {
   margin-top: 10px;
   color: var(--muted);
   font-size: 0.94rem;
-}
-
-.sheet-entry.row-state-active {
-  padding-bottom: 0;
-}
-
-.sheet-entry.row-state-active .sheet-canvas-shell {
-  min-height: 48vh;
-}
-
-.sheet-entry.row-state-active .ink-canvas {
-  min-height: 48vh;
 }
 
 .canvas-actions {
@@ -338,64 +352,16 @@ button:hover:not(:disabled) {
   transform: none;
 }
 
-.sheet-rendered-math,
-.sheet-processing,
-.sheet-error {
-  padding: 6px 6px 10px;
-}
-
 .math-block {
   overflow-x: auto;
-  padding: 10px 6px 0;
+  padding: 0;
   color: var(--text);
 }
 
-.math-block .katex-display {
+.sheet-placement .math-block .katex-display {
   margin: 0;
   text-align: left;
   font-size: clamp(1.7rem, 2.5vw, 2.3rem);
-}
-
-.row-actions,
-.inline-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.row-actions {
-  padding: 10px 0 0;
-}
-
-.edit-panel textarea {
-  width: 100%;
-  padding: 12px 14px;
-  border: 1px solid #d6e1eb;
-  border-radius: 14px;
-  background: #ffffff;
-  color: var(--text);
-  resize: vertical;
-  min-height: 108px;
-}
-
-.edit-panel textarea:focus {
-  outline: 2px solid rgba(47, 128, 237, 0.18);
-  border-color: #b6d4f8;
-}
-
-.sheet-status {
-  margin: 0;
-  color: #7088a0;
-  font-size: 1rem;
-}
-
-.sheet-error {
-  color: var(--danger-text);
-}
-
-.error-copy {
-  margin: 8px 0 0;
-  color: var(--danger-text);
 }
 
 @media (max-width: 980px) {
@@ -415,6 +381,10 @@ button:hover:not(:disabled) {
       linear-gradient(to right, rgba(69, 137, 222, 0.04) 1px, transparent 1px),
       var(--paper);
     background-size: 100% 48px, 48px 48px, 100% 100%;
+  }
+
+  .sheet-surface {
+    min-height: calc(78vh - 96px);
   }
 
   .canvas-toolbar {
