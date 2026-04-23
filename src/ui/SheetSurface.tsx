@@ -231,13 +231,6 @@ export function SheetSurface({
               : `Using ${adapter.label} to replace handwriting in place`}
         </span>
         <div className="canvas-actions">
-          <button
-            type="button"
-            onClick={() => void submit()}
-            disabled={!hasInk || tool === 'eraser' || !adapter.isReady()}
-          >
-            Interpret selection
-          </button>
           <button type="button" onClick={clear} disabled={!hasInk}>
             Clear ink
           </button>

@@ -309,11 +309,14 @@ button:hover:not(:disabled) {
 .sheet-surface {
   position: relative;
   min-height: calc(78vh - 88px);
+  overflow: hidden;
+  z-index: 0;
 }
 
 .sheet-overlay-canvas {
   position: absolute;
   inset: 0;
+  z-index: 1;
 }
 
 .sheet-placement {
@@ -358,6 +361,8 @@ button:hover:not(:disabled) {
 }
 
 .canvas-toolbar {
+  position: relative;
+  z-index: 3;
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
