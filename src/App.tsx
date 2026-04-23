@@ -66,11 +66,14 @@ export default function App() {
     <main className="app-shell">
       <aside className="sidebar-stack">
         <section className="sidebar-card">
-          <p className="eyebrow">Slate</p>
+          <div className="brand-mark">
+            <span className="brand-dot" />
+            <p className="eyebrow">Slate Workspace</p>
+          </div>
           <h1>Handwritten math, one row at a time.</h1>
           <p className="body-copy">
-            The feed now runs through a reducer-backed row lifecycle with a
-            local demo recognizer, validation, and deterministic solver output.
+            A cleaner notebook-style workspace for writing, recognizing, and
+            solving math in a continuous feed.
           </p>
           <div className="status-card">
             <span className="status-label">Latest solved row</span>
@@ -86,6 +89,17 @@ export default function App() {
 
       <section className="paper-stage">
         <div className="paper-sheet feed-paper">
+          <header className="workspace-header">
+            <div>
+              <p className="eyebrow">Math Pad</p>
+              <h2>Live sheet</h2>
+            </div>
+            <div className="workspace-tools" aria-label="Workspace tools">
+              <span className="tool-pill tool-pill-active">Pen</span>
+              <span className="tool-pill">Auto solve</span>
+              <span className="tool-pill">Local</span>
+            </div>
+          </header>
           <div className="paper-line live-paper-line">
             <span className="paper-label">Session feed</span>
             <Feed
