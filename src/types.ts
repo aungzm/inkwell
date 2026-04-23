@@ -7,6 +7,8 @@ export type InkPoint = {
 export type Stroke = {
   id: string;
   points: InkPoint[];
+  color: string;
+  size: number;
 };
 
 export type RasterizedRow = {

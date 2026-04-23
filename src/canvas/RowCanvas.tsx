@@ -6,13 +6,26 @@ import type { RasterizedRow } from '../types';
 
 type RowCanvasProps = {
   onRasterized?: (rasterized: RasterizedRow) => void;
+  tool: 'pencil' | 'eraser';
+  strokeColor: string;
+  strokeSize: number;
 };
 
-export function RowCanvas({ onRasterized }: RowCanvasProps) {
+export function RowCanvas({
+  onRasterized,
+  tool,
+  strokeColor,
+  strokeSize,
+}: RowCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isHovering, setIsHovering] = useState(false);
   const [lastInteractionAt, setLastInteractionAt] = useState<number | null>(null);
-  const { strokes, isDrawing, clear, bind } = useStrokes({ canvasRef });
+  const { strokes, isDrawing, clear, bind } = useStrokes({
+    canvasRef,
+    tool,
+    strokeColor,
+    strokeSize,
+  });
 
   useEffect(() => {
     if (strokes.length === 0) {
@@ -59,9 +72,13 @@ export function RowCanvas({ onRasterized }: RowCanvasProps) {
         <span>
           {hasInk
             ? isDrawing
-              ? 'Writing...'
+              ? tool === 'eraser'
+                ? 'Erasing...'
+                : 'Writing...'
               : `Replace with math in ${Math.max(0, Math.ceil((timeLeft ?? 0) / 100)) / 10}s`
-            : 'Write anywhere on the sheet'}
+            : tool === 'eraser'
+              ? 'Erase from the current writing area'
+              : 'Write anywhere on the sheet'}
         </span>
         <div className="canvas-actions">
           <button type="button" onClick={submit} disabled={!hasInk}>

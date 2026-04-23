@@ -1,13 +1,13 @@
 import { getStroke } from 'perfect-freehand';
 import type { RasterizedRow, Stroke } from '../types';
 
-const STROKE_OPTIONS = {
-  size: 14,
+const getStrokeOptions = (size: number) => ({
+  size,
   thinning: 0.68,
   smoothing: 0.5,
   streamline: 0.4,
   simulatePressure: false,
-};
+});
 
 const PADDING = 14;
 
@@ -34,7 +34,7 @@ export function rasterizeStrokes(
   const outlinePoints = strokes.flatMap((stroke) =>
     getStroke(
       stroke.points.map((point) => [point.x, point.y, point.pressure] as const),
-      STROKE_OPTIONS,
+      getStrokeOptions(stroke.size),
     ),
   );
 
@@ -68,12 +68,10 @@ export function rasterizeStrokes(
   context.scale(scale, scale);
   context.fillStyle = '#ffffff';
   context.fillRect(0, 0, width, height);
-  context.fillStyle = '#101828';
-
   for (const stroke of strokes) {
     const outline = getStroke(
       stroke.points.map((point) => [point.x, point.y, point.pressure] as const),
-      STROKE_OPTIONS,
+      getStrokeOptions(stroke.size),
     ).map(([x, y]) => [x - minX + PADDING, y - minY + PADDING]);
 
     const path = toSvgPath(outline);
@@ -81,6 +79,7 @@ export function rasterizeStrokes(
       continue;
     }
 
+    context.fillStyle = stroke.color;
     context.fill(new Path2D(path));
   }
 

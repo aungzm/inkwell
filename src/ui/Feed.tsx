@@ -7,6 +7,9 @@ type FeedProps = {
   onRedraw: (rowId: string) => void;
   onStartEdit: (rowId: string) => void;
   onSaveEdit: (rowId: string, latex: string) => void;
+  tool: 'pencil' | 'eraser';
+  strokeColor: string;
+  strokeSize: number;
 };
 
 export function Feed({
@@ -15,6 +18,9 @@ export function Feed({
   onRedraw,
   onStartEdit,
   onSaveEdit,
+  tool,
+  strokeColor,
+  strokeSize,
 }: FeedProps) {
   return (
     <div className="feed-list">
@@ -26,6 +32,9 @@ export function Feed({
           onRedraw={onRedraw}
           onStartEdit={onStartEdit}
           onSaveEdit={onSaveEdit}
+          tool={tool}
+          strokeColor={strokeColor}
+          strokeSize={strokeSize}
         />
       ))}
     </div>

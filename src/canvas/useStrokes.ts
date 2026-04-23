@@ -29,9 +29,25 @@ const toSvgPath = (points: number[][]) => {
 
 type UseStrokesOptions = {
   canvasRef: RefObject<HTMLCanvasElement | null>;
+  tool: 'pencil' | 'eraser';
+  strokeColor: string;
+  strokeSize: number;
 };
 
-export function useStrokes({ canvasRef }: UseStrokesOptions) {
+const getStrokeOptions = (size: number) => ({
+  size,
+  thinning: 0.68,
+  smoothing: 0.5,
+  streamline: 0.4,
+  simulatePressure: false,
+});
+
+export function useStrokes({
+  canvasRef,
+  tool,
+  strokeColor,
+  strokeSize,
+}: UseStrokesOptions) {
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
   const activeStrokeIdRef = useRef<string | null>(null);
@@ -57,18 +73,11 @@ export function useStrokes({ canvasRef }: UseStrokesOptions) {
     context.clearRect(0, 0, bounds.width, bounds.height);
     context.lineCap = 'round';
     context.lineJoin = 'round';
-    context.fillStyle = '#18283b';
 
     for (const stroke of strokes) {
       const outline = getStroke(
         stroke.points.map((point) => [point.x, point.y, point.pressure] as const),
-        {
-          size: 14,
-          thinning: 0.68,
-          smoothing: 0.5,
-          streamline: 0.4,
-          simulatePressure: false,
-        },
+        getStrokeOptions(stroke.size),
       );
 
       const path = toSvgPath(outline);
@@ -77,6 +86,7 @@ export function useStrokes({ canvasRef }: UseStrokesOptions) {
       }
 
       const drawingPath = new Path2D(path);
+      context.fillStyle = stroke.color;
       context.fill(drawingPath);
     }
   }, [canvasRef, strokes]);
@@ -96,9 +106,32 @@ export function useStrokes({ canvasRef }: UseStrokesOptions) {
     };
   };
 
+  const eraseAtPoint = (point: { x: number; y: number }) => {
+    const radius = Math.max(10, strokeSize);
+    const radiusSquared = radius * radius;
+
+    setStrokes((current) =>
+      current.filter(
+        (stroke) =>
+          !stroke.points.some((strokePoint) => {
+            const dx = strokePoint.x - point.x;
+            const dy = strokePoint.y - point.y;
+            return dx * dx + dy * dy <= radiusSquared;
+          }),
+      ),
+    );
+  };
+
   const onPointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     const point = getPoint(event);
     if (!point) {
+      return;
+    }
+
+    if (tool === 'eraser') {
+      setIsDrawing(true);
+      eraseAtPoint(point);
+      event.currentTarget.setPointerCapture(event.pointerId);
       return;
     }
 
@@ -106,11 +139,28 @@ export function useStrokes({ canvasRef }: UseStrokesOptions) {
     const strokeId = `stroke-${strokeCounterRef.current}`;
     activeStrokeIdRef.current = strokeId;
     setIsDrawing(true);
-    setStrokes((current) => [...current, { id: strokeId, points: [point] }]);
+    setStrokes((current) => [
+      ...current,
+      { id: strokeId, points: [point], color: strokeColor, size: strokeSize },
+    ]);
     event.currentTarget.setPointerCapture(event.pointerId);
   };
 
   const onPointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (tool === 'eraser') {
+      if (!isDrawing) {
+        return;
+      }
+
+      const point = getPoint(event);
+      if (!point) {
+        return;
+      }
+
+      eraseAtPoint(point);
+      return;
+    }
+
     if (!activeStrokeIdRef.current) {
       return;
     }

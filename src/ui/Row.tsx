@@ -9,6 +9,9 @@ type RowProps = {
   onRedraw: (rowId: string) => void;
   onStartEdit: (rowId: string) => void;
   onSaveEdit: (rowId: string, latex: string) => void;
+  tool: 'pencil' | 'eraser';
+  strokeColor: string;
+  strokeSize: number;
 };
 
 export function Row({
@@ -17,6 +20,9 @@ export function Row({
   onRedraw,
   onStartEdit,
   onSaveEdit,
+  tool,
+  strokeColor,
+  strokeSize,
 }: RowProps) {
   const [draftLatex, setDraftLatex] = useState(row.editedLatex ?? row.vlmResult?.latex ?? '');
 
@@ -28,6 +34,9 @@ export function Row({
     <article className={`sheet-entry row-state-${row.state}`}>
       {row.state === 'active' && (
         <RowCanvas
+          tool={tool}
+          strokeColor={strokeColor}
+          strokeSize={strokeSize}
           onRasterized={(image) => {
             onSubmit(row.id, image);
           }}
