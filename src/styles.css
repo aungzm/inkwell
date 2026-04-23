@@ -1,0 +1,135 @@
+:root {
+  color-scheme: light;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #1f2a37;
+  background:
+    radial-gradient(circle at top left, rgba(215, 229, 255, 0.9), transparent 30%),
+    linear-gradient(135deg, #f5efe3 0%, #ebf4ff 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  gap: 24px;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.sidebar-card,
+.paper-sheet {
+  border: 1px solid rgba(31, 42, 55, 0.08);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 18px 45px rgba(54, 72, 98, 0.12);
+  backdrop-filter: blur(14px);
+}
+
+.sidebar-card {
+  padding: 28px;
+}
+
+.sidebar-card h1 {
+  margin: 8px 0 12px;
+  font-size: clamp(2rem, 2.8vw, 3rem);
+  line-height: 1.02;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: #5d6b80;
+}
+
+.body-copy {
+  max-width: 30ch;
+  color: #4d5f78;
+}
+
+.paper-stage {
+  display: flex;
+  align-items: stretch;
+}
+
+.paper-sheet {
+  width: 100%;
+  padding: 28px 28px 40px;
+  position: relative;
+  overflow: hidden;
+}
+
+.paper-sheet::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, transparent 0, transparent 43px, rgba(89, 128, 196, 0.16) 44px, transparent 45px),
+    linear-gradient(to right, rgba(219, 104, 89, 0.18) 0, rgba(219, 104, 89, 0.18) 2px, transparent 2px);
+  background-size: 100% 44px, 72px 100%;
+  pointer-events: none;
+}
+
+.paper-line {
+  position: relative;
+  min-height: 176px;
+  padding: 24px 24px 0 96px;
+}
+
+.paper-label {
+  position: absolute;
+  left: 20px;
+  top: 28px;
+  font-size: 0.74rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #7d8ba1;
+}
+
+.latex-preview {
+  display: inline-flex;
+  align-items: center;
+  min-height: 92px;
+  padding: 16px 20px;
+  border-radius: 20px;
+  background: rgba(253, 255, 255, 0.85);
+  color: #213049;
+  font-size: 1.8rem;
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .body-copy {
+    max-width: none;
+  }
+
+  .paper-line {
+    padding-left: 20px;
+    padding-top: 52px;
+  }
+}
