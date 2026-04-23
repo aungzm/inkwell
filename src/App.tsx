@@ -1,11 +1,9 @@
-import { useReducer } from 'react';
+import { useReducer, useState } from 'react';
 import { solveMath } from './solver/solve';
 import { validateVlmResult } from './solver/validate';
 import { appReducer, initialAppState } from './state/reducer';
 import type { RasterizedRow, VLMResult } from './types';
 import { Feed } from './ui/Feed';
-import { Settings } from './ui/Settings';
-import { Sidebar } from './ui/Sidebar';
 import { DemoLfm25Adapter } from './vlm/lfm25';
 import { TRANSCRIPTION_PROMPT } from './vlm/prompt';
 
@@ -13,6 +11,7 @@ const demoAdapter = new DemoLfm25Adapter();
 
 export default function App() {
   const [state, dispatch] = useReducer(appReducer, initialAppState);
+  const [isToolbarOpen, setIsToolbarOpen] = useState(true);
 
   const handleSubmit = async (rowId: string, image: RasterizedRow) => {
     dispatch({ type: 'row/submitted', rowId, image });
@@ -61,45 +60,51 @@ export default function App() {
   const latestParsedRow = [...state.rows]
     .reverse()
     .find((row) => row.state === 'parsed' && row.solverResult);
+  const parsedCount = state.rows.filter((row) => row.state === 'parsed').length;
+  const erroredCount = state.rows.filter((row) => row.state === 'errored').length;
 
   return (
     <main className="app-shell">
-      <aside className="sidebar-stack">
-        <section className="sidebar-card">
-          <div className="brand-mark">
-            <span className="brand-dot" />
-            <p className="eyebrow">Slate Workspace</p>
-          </div>
-          <h1>Handwritten math, one row at a time.</h1>
-          <p className="body-copy">
-            A cleaner notebook-style workspace for writing, recognizing, and
-            solving math in a continuous feed.
-          </p>
-          <div className="status-card">
-            <span className="status-label">Latest solved row</span>
-            <strong>
-              {latestParsedRow?.solverResult?.plainText ?? 'Waiting for the first parsed row'}
-            </strong>
-          </div>
-        </section>
-
-        <Sidebar rows={state.rows} />
-        <Settings modelLabel={demoAdapter.label} prompt={TRANSCRIPTION_PROMPT} />
-      </aside>
-
       <section className="paper-stage">
         <div className="paper-sheet feed-paper">
           <header className="workspace-header">
-            <div>
-              <p className="eyebrow">Math Pad</p>
-              <h2>Live sheet</h2>
+            <div className="workspace-title">
+              <div className="brand-mark">
+                <span className="brand-dot" />
+                <p className="eyebrow">Slate Workspace</p>
+              </div>
+              <h1>Live sheet</h1>
             </div>
-            <div className="workspace-tools" aria-label="Workspace tools">
-              <span className="tool-pill tool-pill-active">Pen</span>
-              <span className="tool-pill">Auto solve</span>
-              <span className="tool-pill">Local</span>
-            </div>
+            <button
+              type="button"
+              className="toolbar-toggle"
+              onClick={() => setIsToolbarOpen((current) => !current)}
+              aria-expanded={isToolbarOpen}
+            >
+              {isToolbarOpen ? 'Hide options' : 'Show options'}
+            </button>
           </header>
+          {isToolbarOpen && (
+            <div className="workspace-toolbar">
+              <div className="workspace-tools" aria-label="Workspace tools">
+                <span className="tool-pill tool-pill-active">Pen</span>
+                <span className="tool-pill">Auto solve</span>
+                <span className="tool-pill">Local model</span>
+              </div>
+              <div className="workspace-stats" aria-label="Workspace status">
+                <span className="tool-pill">
+                  Parsed {parsedCount}
+                </span>
+                <span className="tool-pill">
+                  Review {erroredCount}
+                </span>
+                <span className="tool-pill tool-pill-wide">
+                  {latestParsedRow?.solverResult?.plainText ?? 'Waiting for the first solved row'}
+                </span>
+              </div>
+              <p className="toolbar-caption">{demoAdapter.label} · {TRANSCRIPTION_PROMPT}</p>
+            </div>
+          )}
           <div className="paper-line live-paper-line">
             <span className="paper-label">Session feed</span>
             <Feed

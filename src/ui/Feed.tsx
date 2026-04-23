@@ -18,11 +18,10 @@ export function Feed({
 }: FeedProps) {
   return (
     <div className="feed-list">
-      {rows.map((row, index) => (
+      {rows.map((row) => (
         <Row
           key={row.id}
           row={row}
-          index={index}
           onSubmit={onSubmit}
           onRedraw={onRedraw}
           onStartEdit={onStartEdit}
