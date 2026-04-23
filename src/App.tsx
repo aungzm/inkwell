@@ -2,13 +2,11 @@ import { useState } from 'react';
 import { validateVlmResult } from './solver/validate';
 import type { RasterizedRow } from './types';
 import { SheetSurface } from './ui/SheetSurface';
-import { DemoLfm25Adapter } from './vlm/lfm25';
+import { Lfm25WebGpuAdapter } from './vlm/lfm25';
 
-const demoAdapter = new DemoLfm25Adapter();
+const lfm25Adapter = new Lfm25WebGpuAdapter();
 const MODEL_OPTIONS = [
-  { id: 'lfm25-demo', label: 'LFM2.5 Demo' },
-  { id: 'smolvlm-demo', label: 'SmolVLM Demo' },
-  { id: 'qwen-demo', label: 'Qwen Demo' },
+  { id: 'lfm25-webgpu', label: 'LiquidAI LFM2.5-VL-450M' },
 ] as const;
 const COLOR_OPTIONS = ['#14253d', '#2f80ed', '#1f9d55', '#d97706', '#c2410c', '#be185d'];
 
@@ -21,7 +19,7 @@ export default function App() {
   );
 
   const handleInterpret = async (image: RasterizedRow) =>
-    validateVlmResult(await demoAdapter.transcribe(image));
+    validateVlmResult(await lfm25Adapter.transcribe(image));
 
   return (
     <main className="app-shell">
@@ -119,7 +117,7 @@ export default function App() {
 
           <div className="paper-line live-paper-line">
             <SheetSurface
-              adapter={demoAdapter}
+              adapter={lfm25Adapter}
               onValidateResult={handleInterpret}
               tool={tool}
               strokeColor={strokeColor}

@@ -11,8 +11,10 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@huggingface/transformers": "^4.2.0",
     "katex": "^0.16.11",
     "mathjs": "^14.5.2",
+    "onnxruntime-web": "^1.24.3",
     "perfect-freehand": "^1.2.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"

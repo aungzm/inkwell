@@ -1,65 +1,74 @@
 import type { RasterizedRow, VLMResult } from '../types';
 import type { VLMAdapter } from './adapter';
 
-const sleep = (ms: number) =>
-  new Promise<void>((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
+type TransformersModule = typeof import('@huggingface/transformers');
+type ImageModel = Awaited<
+  ReturnType<TransformersModule['AutoModelForImageTextToText']['from_pretrained']>
+>;
+type Processor = Awaited<
+  ReturnType<TransformersModule['AutoProcessor']['from_pretrained']>
+>;
 
-const pickResult = (image: RasterizedRow): Omit<VLMResult, 'raw'> => {
-  const ratio = image.width / image.height;
-
-  if (ratio > 2.3) {
-    return {
-      latex: '2 + 3',
-      intent: { kind: 'evaluate' },
-      confidence: 0.72,
-    };
-  }
-
-  if (ratio > 1.8) {
-    return {
-      latex: '2x + 3 = 7',
-      intent: { kind: 'solve', for: 'x' },
-      confidence: 0.67,
-    };
-  }
-
-  if (image.height > 320) {
-    return {
-      latex: '\\frac{d}{dx} x^3',
-      intent: { kind: 'derivative', withRespectTo: 'x' },
-      confidence: 0.65,
-    };
-  }
-
-  if (ratio < 1.1) {
-    return {
-      latex: '\\frac{1}{2}',
-      intent: { kind: 'evaluate' },
-      confidence: 0.58,
-    };
-  }
-
-  return {
-    latex: '(x+1)^2 - x^2',
-    intent: { kind: 'simplify' },
-    confidence: 0.63,
+const MODEL_ID = 'LiquidAI/LFM2.5-VL-450M-ONNX';
+type BrowserNavigatorWithGpu = Navigator & {
+  gpu?: {
+    requestAdapter: () => Promise<unknown>;
   };
 };
 
-export class DemoLfm25Adapter implements VLMAdapter {
-  id = 'lfm25-demo';
-  label = 'LFM2.5 Demo Adapter';
+export class Lfm25WebGpuAdapter implements VLMAdapter {
+  id = 'lfm25-webgpu';
+  label = 'LiquidAI LFM2.5-VL-450M (WebGPU)';
   private ready = false;
+  private model: ImageModel | null = null;
+  private processor: Processor | null = null;
+  private transformers: TransformersModule | null = null;
+  private loadingPromise: Promise<void> | null = null;
 
   async load() {
-    if (this.ready) {
+    if (this.ready && this.model && this.processor) {
       return;
     }
 
-    await sleep(300);
-    this.ready = true;
+    if (this.loadingPromise) {
+      return this.loadingPromise;
+    }
+
+    this.loadingPromise = (async () => {
+      const webGpuNavigator = navigator as BrowserNavigatorWithGpu;
+      if (!webGpuNavigator.gpu) {
+        throw new Error('WebGPU is not available in this browser.');
+      }
+
+      const adapter = await webGpuNavigator.gpu.requestAdapter();
+      if (!adapter) {
+        throw new Error('No WebGPU adapter was found on this device.');
+      }
+
+      const transformers = await import('@huggingface/transformers');
+      transformers.env.allowLocalModels = false;
+
+      const [model, processor] = await Promise.all([
+        transformers.AutoModelForImageTextToText.from_pretrained(MODEL_ID, {
+          device: 'webgpu',
+          dtype: {
+            vision_encoder: 'fp16',
+            embed_tokens: 'fp16',
+            decoder_model_merged: 'q4',
+          },
+        }),
+        transformers.AutoProcessor.from_pretrained(MODEL_ID),
+      ]);
+
+      this.transformers = transformers;
+      this.model = model;
+      this.processor = processor;
+      this.ready = true;
+    })().finally(() => {
+      this.loadingPromise = null;
+    });
+
+    return this.loadingPromise;
   }
 
   isReady() {
@@ -68,26 +77,57 @@ export class DemoLfm25Adapter implements VLMAdapter {
 
   async transcribe(image: RasterizedRow): Promise<VLMResult> {
     await this.load();
-    await sleep(650);
-    const result = pickResult(image);
-    const variable =
-      result.intent?.kind === 'solve'
-        ? result.intent.for ?? null
-        : result.intent?.kind === 'derivative' || result.intent?.kind === 'integral'
-          ? result.intent.withRespectTo
-          : null;
+
+    if (!this.model || !this.processor || !this.transformers) {
+      throw new Error('The LFM2.5 WebGPU model is not ready yet.');
+    }
+
+    const { RawImage } = this.transformers;
+    const rawImage = new RawImage(image.imageData.data, image.width, image.height, 4);
+    const prompt =
+      'Transcribe the handwritten content in this image. Return only the final LaTeX or plain text with no explanation.';
+    const messages = [
+      {
+        role: 'user',
+        content: [
+          { type: 'image' },
+          { type: 'text', text: prompt },
+        ],
+      },
+    ];
+
+    const chatPrompt = this.processor.apply_chat_template(messages, {
+      add_generation_prompt: true,
+    });
+    const inputs = await this.processor(rawImage, chatPrompt, {
+      add_special_tokens: false,
+    });
+    const outputs = (await this.model.generate({
+      ...inputs,
+      do_sample: false,
+      max_new_tokens: 96,
+    })) as { slice: (first: null, second: [number, null]) => unknown };
+
+    const inputLength = inputs.input_ids.dims.at(-1) ?? 0;
+    const generated = outputs.slice(null, [inputLength, null]) as Parameters<
+      Processor['batch_decode']
+    >[0];
+    const decoded = this.processor.batch_decode(generated, {
+      skip_special_tokens: true,
+    })[0];
+    const latex = decoded.trim();
 
     return {
-      ...result,
-      raw: JSON.stringify({
-        latex: result.latex,
-        intent: result.intent?.kind ?? null,
-        variable,
-      }),
+      latex,
+      raw: decoded,
     };
   }
 
   async unload() {
+    this.model?.dispose?.();
+    this.model = null;
+    this.processor = null;
+    this.transformers = null;
     this.ready = false;
   }
 }
