@@ -15,3 +15,53 @@ export type RasterizedRow = {
   width: number;
   height: number;
 };
+
+export type Intent =
+  | { kind: 'evaluate' }
+  | { kind: 'simplify' }
+  | { kind: 'solve'; for?: string }
+  | { kind: 'derivative'; withRespectTo: string }
+  | {
+      kind: 'integral';
+      withRespectTo: string;
+      definite?: { from: string; to: string };
+    };
+
+export type VLMResult = {
+  latex: string;
+  intent?: Intent;
+  confidence?: number;
+  raw: string;
+};
+
+export type SolverResult = {
+  kind: 'exact' | 'approximate' | 'unsupported';
+  latex: string;
+  plainText: string;
+};
+
+export type RowState = 'active' | 'processing' | 'parsed' | 'errored' | 'editing';
+
+export type Row = {
+  id: string;
+  state: RowState;
+  strokes: Stroke[];
+  image?: RasterizedRow;
+  vlmResult?: VLMResult;
+  solverResult?: SolverResult;
+  error?: string;
+  editedLatex?: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type Settings = {
+  activeModelId: string;
+  autoSubmitMs: number;
+};
+
+export type AppState = {
+  sessionId: string;
+  rows: Row[];
+  settings: Settings;
+};

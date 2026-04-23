@@ -37,8 +37,14 @@ textarea {
   padding: 24px;
 }
 
+.sidebar-stack {
+  display: grid;
+  gap: 18px;
+}
+
 .sidebar-card,
-.paper-sheet {
+.paper-sheet,
+.panel-card {
   border: 1px solid rgba(31, 42, 55, 0.08);
   border-radius: 28px;
   background: rgba(255, 255, 255, 0.78);
@@ -48,6 +54,10 @@ textarea {
 
 .sidebar-card {
   padding: 28px;
+}
+
+.panel-card {
+  padding: 22px 24px;
 }
 
 .sidebar-card h1 {
@@ -69,6 +79,12 @@ textarea {
   color: #4d5f78;
 }
 
+.caption-copy {
+  margin: 10px 0 0;
+  color: #64748b;
+  font-size: 0.94rem;
+}
+
 .paper-stage {
   display: flex;
   align-items: stretch;
@@ -79,6 +95,10 @@ textarea {
   padding: 28px 28px 40px;
   position: relative;
   overflow: hidden;
+}
+
+.feed-paper {
+  min-height: calc(100vh - 48px);
 }
 
 .paper-sheet::before {
@@ -99,7 +119,7 @@ textarea {
 }
 
 .live-paper-line {
-  min-height: 420px;
+  min-height: 640px;
 }
 
 .paper-label {
@@ -138,6 +158,18 @@ textarea {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: #718198;
+}
+
+.panel-title {
+  margin: 8px 0 12px;
+  font-size: 1.2rem;
+}
+
+.summary-metric {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-top: 1px solid rgba(77, 95, 120, 0.12);
 }
 
 .row-canvas-card {
@@ -235,6 +267,110 @@ textarea {
   color: #52657d;
 }
 
+.feed-list {
+  display: grid;
+  gap: 18px;
+}
+
+.feed-row {
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr);
+  gap: 16px;
+}
+
+.row-index {
+  padding-top: 18px;
+  font-size: 0.76rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #74839a;
+}
+
+.row-main {
+  min-width: 0;
+}
+
+.row-result-shell,
+.error-panel,
+.processing-panel {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(77, 95, 120, 0.12);
+}
+
+.row-result-shell {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.result-column {
+  min-width: 0;
+}
+
+.result-column-accent {
+  padding: 16px;
+  border-radius: 22px;
+  background: rgba(241, 246, 255, 0.85);
+}
+
+.result-label {
+  margin: 0 0 10px;
+  font-size: 0.76rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #607086;
+}
+
+.math-block {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.row-actions,
+.inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.row-actions {
+  grid-column: 1 / -1;
+}
+
+.row-actions button,
+.inline-actions button {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 16px;
+  background: #213049;
+  color: #f8fbff;
+  cursor: pointer;
+}
+
+.edit-panel textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(77, 95, 120, 0.18);
+  resize: vertical;
+  min-height: 108px;
+}
+
+.error-panel code {
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(26, 36, 52, 0.06);
+}
+
+.error-copy {
+  margin: 0;
+  color: #9a3412;
+}
+
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -251,6 +387,11 @@ textarea {
 
   .row-canvas-copy,
   .row-canvas-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .feed-row,
+  .row-result-shell {
     grid-template-columns: 1fr;
   }
 }
