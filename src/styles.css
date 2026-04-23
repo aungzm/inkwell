@@ -266,11 +266,12 @@ button:hover:not(:disabled) {
 
 .feed-list {
   display: grid;
-  gap: 20px;
+  gap: 0;
 }
 
 .sheet-entry {
   min-width: 0;
+  padding-bottom: 16px;
 }
 
 .ink-canvas {
@@ -278,13 +279,9 @@ button:hover:not(:disabled) {
   width: 100%;
   min-height: 220px;
   touch-action: none;
-  border: 1px dashed rgba(98, 140, 184, 0.38);
-  border-radius: 14px;
-  background:
-    linear-gradient(to bottom, transparent 0, transparent 47px, rgba(69, 137, 222, 0.08) 48px, transparent 49px),
-    linear-gradient(to right, rgba(69, 137, 222, 0.04) 1px, transparent 1px),
-    linear-gradient(180deg, #ffffff, #fbfdff);
-  background-size: 100% 48px, 48px 48px, 100% 100%;
+  border: none;
+  border-radius: 0;
+  background: transparent;
 }
 
 .canvas-toolbar {
@@ -296,6 +293,18 @@ button:hover:not(:disabled) {
   margin-top: 10px;
   color: var(--muted);
   font-size: 0.94rem;
+}
+
+.sheet-entry.row-state-active {
+  padding-bottom: 0;
+}
+
+.sheet-entry.row-state-active .sheet-canvas-shell {
+  min-height: 48vh;
+}
+
+.sheet-entry.row-state-active .ink-canvas {
+  min-height: 48vh;
 }
 
 .canvas-actions {
@@ -332,7 +341,7 @@ button:hover:not(:disabled) {
 .sheet-rendered-math,
 .sheet-processing,
 .sheet-error {
-  padding: 6px 6px 0;
+  padding: 6px 6px 10px;
 }
 
 .math-block {
