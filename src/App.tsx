@@ -159,7 +159,6 @@ export default function App() {
           </div>
 
           <div className="paper-line live-paper-line">
-            <span className="paper-label">Session feed</span>
             <Feed
               rows={state.rows}
               onSubmit={handleSubmit}

@@ -239,7 +239,7 @@ button:hover:not(:disabled) {
 .paper-line {
   position: relative;
   min-height: 78vh;
-  padding: 56px 28px 28px;
+  padding: 28px;
   border: 1px solid #dce7f2;
   border-radius: 22px;
   background:
@@ -251,16 +251,6 @@ button:hover:not(:disabled) {
 
 .live-paper-line {
   min-height: 78vh;
-}
-
-.paper-label {
-  position: absolute;
-  left: 28px;
-  top: 20px;
-  font-size: 0.72rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #7890a6;
 }
 
 .latex-preview {
@@ -410,7 +400,7 @@ button:hover:not(:disabled) {
   }
 
   .paper-line {
-    padding: 52px 18px 18px;
+    padding: 18px;
     background:
       linear-gradient(to bottom, transparent 0, transparent 47px, rgba(69, 137, 222, 0.08) 48px, transparent 49px),
       linear-gradient(to right, rgba(69, 137, 222, 0.04) 1px, transparent 1px),
@@ -420,9 +410,5 @@ button:hover:not(:disabled) {
 
   .canvas-toolbar {
     align-items: flex-start;
-  }
-
-  .paper-label {
-    left: 18px;
   }
 }
