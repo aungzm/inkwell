@@ -3,11 +3,18 @@ import { validateVlmResult } from './solver/validate';
 import type { RasterizedRow } from './types';
 import { SheetSurface } from './ui/SheetSurface';
 import { Lfm25WebGpuAdapter } from './vlm/lfm25';
+import { Pix2TextWebGpuAdapter } from './vlm/pix2text';
 import type { VlmStatus } from './vlm/adapter';
 
 const lfm25Adapter = new Lfm25WebGpuAdapter();
+const pix2TextAdapter = new Pix2TextWebGpuAdapter();
+const ADAPTERS = {
+  'lfm25-webgpu': lfm25Adapter,
+  'pix2text-mfr': pix2TextAdapter,
+} as const;
 const MODEL_OPTIONS = [
   { id: 'lfm25-webgpu', label: 'LiquidAI LFM2.5-VL-450M' },
+  { id: 'pix2text-mfr', label: 'breezedeus/pix2text-mfr' },
 ] as const;
 const COLOR_OPTIONS = ['#14253d', '#2f80ed', '#1f9d55', '#d97706', '#c2410c', '#be185d'];
 
@@ -22,14 +29,19 @@ export default function App() {
     stage: 'idle',
     message: 'Preparing model runtime...',
   });
+  const activeAdapter = ADAPTERS[activeModelId];
 
   useEffect(() => {
-    lfm25Adapter.setStatusListener(setModelStatus);
+    setModelStatus({
+      stage: 'idle',
+      message: `Preparing ${activeAdapter.label}...`,
+    });
+    activeAdapter.setStatusListener(setModelStatus);
 
     let cancelled = false;
     const boot = async () => {
       try {
-        const support = await lfm25Adapter.checkSupport();
+        const support = await activeAdapter.checkSupport();
         if (cancelled) {
           return;
         }
@@ -42,7 +54,7 @@ export default function App() {
           return;
         }
 
-        await lfm25Adapter.load();
+        await activeAdapter.load();
       } catch (error) {
         if (cancelled) {
           return;
@@ -60,12 +72,12 @@ export default function App() {
 
     return () => {
       cancelled = true;
-      lfm25Adapter.setStatusListener(null);
+      activeAdapter.setStatusListener(null);
     };
-  }, []);
+  }, [activeAdapter]);
 
   const handleInterpret = async (image: RasterizedRow) =>
-    validateVlmResult(await lfm25Adapter.transcribe(image));
+    validateVlmResult(await activeAdapter.transcribe(image));
 
   return (
     <main className="app-shell">
@@ -178,7 +190,7 @@ export default function App() {
 
           <div className="paper-line live-paper-line">
             <SheetSurface
-              adapter={lfm25Adapter}
+              adapter={activeAdapter}
               onValidateResult={handleInterpret}
               tool={tool}
               strokeColor={strokeColor}
