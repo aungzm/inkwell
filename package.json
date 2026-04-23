@@ -14,7 +14,7 @@
     "@huggingface/transformers": "^4.2.0",
     "katex": "^0.16.11",
     "mathjs": "^14.5.2",
-    "onnxruntime-web": "^1.24.3",
+    "onnxruntime-web": "1.26.0-dev.20260416-b7804b056c",
     "perfect-freehand": "^1.2.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
