@@ -140,6 +140,53 @@ button:hover:not(:disabled) {
   background: linear-gradient(180deg, #fdfefe, #f5f9fd);
 }
 
+.model-status-banner {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid #dce7f0;
+  border-radius: 16px;
+  background: #f8fbfe;
+}
+
+.model-status-title {
+  margin: 0;
+  font-size: 0.74rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #6f889f;
+}
+
+.model-status-copy {
+  margin: 4px 0 0;
+  color: var(--text);
+}
+
+.status-ready {
+  border-color: #cfe8d8;
+  background: #f4fbf7;
+}
+
+.status-error {
+  border-color: #f0d9cf;
+  background: #fff8f5;
+}
+
+.model-progress {
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e6eef6;
+}
+
+.model-progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #6fb0ff, #2f80ed);
+}
+
 .tool-group {
   display: grid;
   gap: 8px;

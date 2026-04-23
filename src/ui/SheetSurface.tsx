@@ -219,6 +219,8 @@ export function SheetSurface({
         <span>
           {tool === 'eraser'
             ? 'Erase handwriting or rendered placements directly on the sheet'
+            : !adapter.isReady()
+              ? 'Model is still preparing. You can draw now and interpret once it is ready.'
             : hasInk
               ? isDrawing
                 ? 'Writing...'
@@ -229,7 +231,11 @@ export function SheetSurface({
               : `Using ${adapter.label} to replace handwriting in place`}
         </span>
         <div className="canvas-actions">
-          <button type="button" onClick={() => void submit()} disabled={!hasInk || tool === 'eraser'}>
+          <button
+            type="button"
+            onClick={() => void submit()}
+            disabled={!hasInk || tool === 'eraser' || !adapter.isReady()}
+          >
             Interpret selection
           </button>
           <button type="button" onClick={clear} disabled={!hasInk}>

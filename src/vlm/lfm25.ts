@@ -1,5 +1,5 @@
 import type { RasterizedRow, VLMResult } from '../types';
-import type { VLMAdapter } from './adapter';
+import type { VLMAdapter, VlmCapability, VlmStatus } from './adapter';
 
 type TransformersModule = typeof import('@huggingface/transformers');
 type ImageModel = Awaited<
@@ -24,9 +24,48 @@ export class Lfm25WebGpuAdapter implements VLMAdapter {
   private processor: Processor | null = null;
   private transformers: TransformersModule | null = null;
   private loadingPromise: Promise<void> | null = null;
+  private statusListener: ((status: VlmStatus) => void) | null = null;
+
+  private emitStatus(status: VlmStatus) {
+    this.statusListener?.(status);
+  }
+
+  setStatusListener(listener: ((status: VlmStatus) => void) | null) {
+    this.statusListener = listener;
+  }
+
+  async checkSupport(): Promise<VlmCapability> {
+    this.emitStatus({ stage: 'checking', message: 'Checking browser and WebGPU support...' });
+
+    if (!navigator.onLine) {
+      return {
+        supported: false,
+        reason: 'You appear to be offline. The model files need an internet connection on first load.',
+      };
+    }
+
+    const webGpuNavigator = navigator as BrowserNavigatorWithGpu;
+    if (!webGpuNavigator.gpu) {
+      return {
+        supported: false,
+        reason: 'WebGPU is not available in this browser.',
+      };
+    }
+
+    const adapter = await webGpuNavigator.gpu.requestAdapter();
+    if (!adapter) {
+      return {
+        supported: false,
+        reason: 'A WebGPU adapter could not be created on this device.',
+      };
+    }
+
+    return { supported: true };
+  }
 
   async load() {
     if (this.ready && this.model && this.processor) {
+      this.emitStatus({ stage: 'ready', message: 'LiquidAI LFM2.5 is ready.' });
       return;
     }
 
@@ -35,18 +74,23 @@ export class Lfm25WebGpuAdapter implements VLMAdapter {
     }
 
     this.loadingPromise = (async () => {
-      const webGpuNavigator = navigator as BrowserNavigatorWithGpu;
-      if (!webGpuNavigator.gpu) {
-        throw new Error('WebGPU is not available in this browser.');
+      const support = await this.checkSupport();
+      if (!support.supported) {
+        throw new Error(support.reason ?? 'This browser cannot run the LiquidAI WebGPU model.');
       }
 
-      const adapter = await webGpuNavigator.gpu.requestAdapter();
-      if (!adapter) {
-        throw new Error('No WebGPU adapter was found on this device.');
-      }
-
+      this.emitStatus({ stage: 'loading', message: 'Loading Transformers.js runtime...' });
       const transformers = await import('@huggingface/transformers');
       transformers.env.allowLocalModels = false;
+
+      const onProgress = (info: { status?: string; progress?: number; file?: string; name?: string }) => {
+        const label = info.file ?? info.name ?? info.status ?? 'model files';
+        this.emitStatus({
+          stage: 'loading',
+          message: `Loading ${label}...`,
+          progress: typeof info.progress === 'number' ? info.progress : undefined,
+        });
+      };
 
       const [model, processor] = await Promise.all([
         transformers.AutoModelForImageTextToText.from_pretrained(MODEL_ID, {
@@ -56,19 +100,29 @@ export class Lfm25WebGpuAdapter implements VLMAdapter {
             embed_tokens: 'fp16',
             decoder_model_merged: 'q4',
           },
+          progress_callback: onProgress,
         }),
-        transformers.AutoProcessor.from_pretrained(MODEL_ID),
+        transformers.AutoProcessor.from_pretrained(MODEL_ID, {
+          progress_callback: onProgress,
+        } as never),
       ]);
 
       this.transformers = transformers;
       this.model = model;
       this.processor = processor;
       this.ready = true;
+      this.emitStatus({ stage: 'ready', message: 'LiquidAI LFM2.5 is ready.' });
     })().finally(() => {
       this.loadingPromise = null;
     });
 
-    return this.loadingPromise;
+    return this.loadingPromise.catch((error) => {
+      this.emitStatus({
+        stage: 'error',
+        message: error instanceof Error ? error.message : 'Failed to load the LiquidAI model.',
+      });
+      throw error;
+    });
   }
 
   isReady() {
@@ -129,5 +183,6 @@ export class Lfm25WebGpuAdapter implements VLMAdapter {
     this.processor = null;
     this.transformers = null;
     this.ready = false;
+    this.emitStatus({ stage: 'idle', message: 'Model unloaded.' });
   }
 }

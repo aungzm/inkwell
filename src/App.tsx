@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { validateVlmResult } from './solver/validate';
 import type { RasterizedRow } from './types';
 import { SheetSurface } from './ui/SheetSurface';
 import { Lfm25WebGpuAdapter } from './vlm/lfm25';
+import type { VlmStatus } from './vlm/adapter';
 
 const lfm25Adapter = new Lfm25WebGpuAdapter();
 const MODEL_OPTIONS = [
@@ -17,6 +18,51 @@ export default function App() {
   const [activeModelId, setActiveModelId] = useState<(typeof MODEL_OPTIONS)[number]['id']>(
     MODEL_OPTIONS[0].id,
   );
+  const [modelStatus, setModelStatus] = useState<VlmStatus>({
+    stage: 'idle',
+    message: 'Preparing model runtime...',
+  });
+
+  useEffect(() => {
+    lfm25Adapter.setStatusListener(setModelStatus);
+
+    let cancelled = false;
+    const boot = async () => {
+      try {
+        const support = await lfm25Adapter.checkSupport();
+        if (cancelled) {
+          return;
+        }
+
+        if (!support.supported) {
+          setModelStatus({
+            stage: 'error',
+            message: support.reason ?? 'This browser cannot run the WebGPU model.',
+          });
+          return;
+        }
+
+        await lfm25Adapter.load();
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        setModelStatus({
+          stage: 'error',
+          message:
+            error instanceof Error ? error.message : 'Failed to initialize the LiquidAI model.',
+        });
+      }
+    };
+
+    void boot();
+
+    return () => {
+      cancelled = true;
+      lfm25Adapter.setStatusListener(null);
+    };
+  }, []);
 
   const handleInterpret = async (image: RasterizedRow) =>
     validateVlmResult(await lfm25Adapter.transcribe(image));
@@ -113,6 +159,21 @@ export default function App() {
                 ))}
               </select>
             </div>
+          </div>
+
+          <div className={`model-status-banner status-${modelStatus.stage}`}>
+            <div>
+              <p className="model-status-title">Model status</p>
+              <p className="model-status-copy">{modelStatus.message}</p>
+            </div>
+            {modelStatus.stage === 'loading' && typeof modelStatus.progress === 'number' && (
+              <div className="model-progress">
+                <div
+                  className="model-progress-bar"
+                  style={{ width: `${Math.max(4, Math.min(100, modelStatus.progress * 100))}%` }}
+                />
+              </div>
+            )}
           </div>
 
           <div className="paper-line live-paper-line">
