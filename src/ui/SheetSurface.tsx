@@ -74,7 +74,6 @@ export function SheetSurface({
   onValidateResult,
 }: SheetSurfaceProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [isHovering, setIsHovering] = useState(false);
   const [lastInteractionAt, setLastInteractionAt] = useState<number | null>(null);
   const [placements, setPlacements] = useState<Placement[]>([]);
 
@@ -209,8 +208,6 @@ export function SheetSurface({
         <canvas
           ref={canvasRef}
           className="ink-canvas sheet-overlay-canvas"
-          onMouseEnter={() => setIsHovering(true)}
-          onMouseLeave={() => setIsHovering(false)}
           {...bind}
         />
       </div>

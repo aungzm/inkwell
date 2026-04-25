@@ -18,7 +18,6 @@ export function RowCanvas({
   strokeSize,
 }: RowCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [isHovering, setIsHovering] = useState(false);
   const [lastInteractionAt, setLastInteractionAt] = useState<number | null>(null);
   const { strokes, isDrawing, clear, bind } = useStrokes({
     canvasRef,
@@ -63,8 +62,6 @@ export function RowCanvas({
       <canvas
         ref={canvasRef}
         className="ink-canvas"
-        onMouseEnter={() => setIsHovering(true)}
-        onMouseLeave={() => setIsHovering(false)}
         {...bind}
       />
 
