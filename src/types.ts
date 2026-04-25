@@ -9,6 +9,8 @@ export type Stroke = {
   points: InkPoint[];
   color: string;
   size: number;
+  startedAt: number;
+  endedAt: number;
 };
 
 export type RasterizedRow = {
@@ -16,6 +18,7 @@ export type RasterizedRow = {
   dataUrl: string;
   width: number;
   height: number;
+  strokes: Stroke[];
 };
 
 export type Intent =

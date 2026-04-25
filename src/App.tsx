@@ -2,59 +2,32 @@ import { useEffect, useState } from 'react';
 import { validateVlmResult } from './solver/validate';
 import type { RasterizedRow } from './types';
 import { SheetSurface } from './ui/SheetSurface';
-import { Lfm25WebGpuAdapter } from './vlm/lfm25';
-import { Pix2TextWebGpuAdapter } from './vlm/pix2text';
+import { LocalMathOnnxAdapter } from './vlm/localMath';
 import type { VlmStatus } from './vlm/adapter';
 
-const lfm25Adapter = new Lfm25WebGpuAdapter();
-const pix2TextAdapter = new Pix2TextWebGpuAdapter();
-const ADAPTERS = {
-  'lfm25-webgpu': lfm25Adapter,
-  'pix2text-mfr': pix2TextAdapter,
-} as const;
-const MODEL_OPTIONS = [
-  { id: 'lfm25-webgpu', label: 'LiquidAI LFM2.5-VL-450M' },
-  { id: 'pix2text-mfr', label: 'breezedeus/pix2text-mfr' },
-] as const;
+const adapter = new LocalMathOnnxAdapter();
 const COLOR_OPTIONS = ['#14253d', '#2f80ed', '#1f9d55', '#d97706', '#c2410c', '#be185d'];
 
 export default function App() {
   const [tool, setTool] = useState<'pencil' | 'eraser'>('pencil');
   const [strokeSize, setStrokeSize] = useState(14);
   const [strokeColor, setStrokeColor] = useState(COLOR_OPTIONS[0]);
-  const [activeModelId, setActiveModelId] = useState<(typeof MODEL_OPTIONS)[number]['id']>(
-    MODEL_OPTIONS[0].id,
-  );
   const [modelStatus, setModelStatus] = useState<VlmStatus>({
     stage: 'idle',
     message: 'Preparing model runtime...',
   });
-  const activeAdapter = ADAPTERS[activeModelId];
 
   useEffect(() => {
     setModelStatus({
       stage: 'idle',
-      message: `Preparing ${activeAdapter.label}...`,
+      message: `Preparing ${adapter.label}...`,
     });
-    activeAdapter.setStatusListener(setModelStatus);
+    adapter.setStatusListener(setModelStatus);
 
     let cancelled = false;
     const boot = async () => {
       try {
-        const support = await activeAdapter.checkSupport();
-        if (cancelled) {
-          return;
-        }
-
-        if (!support.supported) {
-          setModelStatus({
-            stage: 'error',
-            message: support.reason ?? 'This browser cannot run the WebGPU model.',
-          });
-          return;
-        }
-
-        await activeAdapter.load();
+        await adapter.load();
       } catch (error) {
         if (cancelled) {
           return;
@@ -63,7 +36,7 @@ export default function App() {
         setModelStatus({
           stage: 'error',
           message:
-            error instanceof Error ? error.message : 'Failed to initialize the LiquidAI model.',
+            error instanceof Error ? error.message : 'Failed to initialize the local ONNX model.',
         });
       }
     };
@@ -72,12 +45,12 @@ export default function App() {
 
     return () => {
       cancelled = true;
-      activeAdapter.setStatusListener(null);
+      adapter.setStatusListener(null);
     };
-  }, [activeAdapter]);
+  }, []);
 
   const handleInterpret = async (image: RasterizedRow) =>
-    validateVlmResult(await activeAdapter.transcribe(image));
+    validateVlmResult(await adapter.transcribe(image));
 
   return (
     <main className="app-shell">
@@ -152,24 +125,11 @@ export default function App() {
               </div>
             </div>
 
-            <div className="tool-group tool-group-model" aria-label="Model selection">
-              <label className="tool-group-label" htmlFor="model-select">
-                Model
-              </label>
-              <select
-                id="model-select"
-                className="model-select"
-                value={activeModelId}
-                onChange={(event) =>
-                  setActiveModelId(event.target.value as (typeof MODEL_OPTIONS)[number]['id'])
-                }
-              >
-                {MODEL_OPTIONS.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.label}
-                  </option>
-                ))}
-              </select>
+            <div className="tool-group tool-group-model" aria-label="Active model">
+              <span className="tool-group-label">Model</span>
+              <div className="model-select" aria-live="polite">
+                {adapter.label}
+              </div>
             </div>
           </div>
 
@@ -190,7 +150,7 @@ export default function App() {
 
           <div className="paper-line live-paper-line">
             <SheetSurface
-              adapter={activeAdapter}
+              adapter={adapter}
               onValidateResult={handleInterpret}
               tool={tool}
               strokeColor={strokeColor}

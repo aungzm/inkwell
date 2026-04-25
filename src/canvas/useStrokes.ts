@@ -140,11 +140,19 @@ export function useStrokes({
 
     strokeCounterRef.current += 1;
     const strokeId = `stroke-${strokeCounterRef.current}`;
+    const now = Date.now();
     activeStrokeIdRef.current = strokeId;
     setIsDrawing(true);
     setStrokes((current) => [
       ...current,
-      { id: strokeId, points: [point], color: strokeColor, size: strokeSize },
+      {
+        id: strokeId,
+        points: [point],
+        color: strokeColor,
+        size: strokeSize,
+        startedAt: now,
+        endedAt: now,
+      },
     ]);
     event.currentTarget.setPointerCapture(event.pointerId);
   };
@@ -176,7 +184,7 @@ export function useStrokes({
     setStrokes((current) =>
       current.map((stroke) =>
         stroke.id === activeStrokeIdRef.current
-          ? { ...stroke, points: [...stroke.points, point] }
+          ? { ...stroke, points: [...stroke.points, point], endedAt: Date.now() }
           : stroke,
       ),
     );

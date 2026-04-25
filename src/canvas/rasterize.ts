@@ -89,5 +89,9 @@ export function rasterizeStrokes(
     dataUrl: canvas.toDataURL('image/png'),
     width: canvas.width,
     height: canvas.height,
+    strokes: strokes.map((stroke) => ({
+      ...stroke,
+      points: stroke.points.map((point) => ({ ...point })),
+    })),
   };
 }
