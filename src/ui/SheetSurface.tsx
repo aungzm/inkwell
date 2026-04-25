@@ -173,8 +173,8 @@ export function SheetSurface({
   const timeLeft = usePauseDetector({
     enabled: hasInk,
     isDrawing,
-    isHovering,
     lastInteractionAt,
+    thresholdMs: 500,
     onPause: () => {
       void submit();
     },

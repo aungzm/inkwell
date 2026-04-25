@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 type PauseDetectorOptions = {
   enabled: boolean;
   isDrawing: boolean;
-  isHovering: boolean;
   lastInteractionAt: number | null;
   thresholdMs?: number;
   onPause: () => void;
@@ -12,15 +11,14 @@ type PauseDetectorOptions = {
 export function usePauseDetector({
   enabled,
   isDrawing,
-  isHovering,
   lastInteractionAt,
-  thresholdMs = 1200,
+  thresholdMs = 500,
   onPause,
 }: PauseDetectorOptions) {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!enabled || isDrawing || isHovering || lastInteractionAt === null) {
+    if (!enabled || isDrawing || lastInteractionAt === null) {
       setTimeLeft(null);
       return;
     }
@@ -39,7 +37,7 @@ export function usePauseDetector({
     tick();
     const timer = window.setInterval(tick, 60);
     return () => window.clearInterval(timer);
-  }, [enabled, isDrawing, isHovering, lastInteractionAt, onPause, thresholdMs]);
+  }, [enabled, isDrawing, lastInteractionAt, onPause, thresholdMs]);
 
   return timeLeft;
 }

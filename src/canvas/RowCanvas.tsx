@@ -53,8 +53,8 @@ export function RowCanvas({
   const timeLeft = usePauseDetector({
     enabled: hasInk,
     isDrawing,
-    isHovering,
     lastInteractionAt,
+    thresholdMs: 500,
     onPause: submit,
   });
 

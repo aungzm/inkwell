@@ -28,6 +28,11 @@ type SymbolPrediction = {
   bbox: StrokeBounds;
 };
 
+type PreparedSymbol = {
+  bbox: StrokeBounds;
+  tensorData: Float32Array;
+};
+
 const config = classConfig as ClassConfig;
 const CLASSES = config.classes;
 const IMAGE_SIZE = config.img_size;
@@ -199,22 +204,16 @@ function rasterizeGroup(group: Stroke[], imgSize: number) {
     context.stroke();
   }
 
-  return { canvas, bbox };
-}
-
-function canvasToTensor(canvas: HTMLCanvasElement, imgSize: number) {
-  const context = canvas.getContext('2d', { willReadFrequently: true });
-  if (!context) {
-    throw new Error('Unable to read symbol canvas.');
-  }
-
   const data = context.getImageData(0, 0, imgSize, imgSize).data;
   const tensorData = new Float32Array(imgSize * imgSize);
   for (let index = 0; index < imgSize * imgSize; index += 1) {
     tensorData[index] = data[index * 4] / 255;
   }
 
-  return new ort.Tensor('float32', tensorData, [1, 1, imgSize, imgSize]);
+  return {
+    bbox,
+    tensorData,
+  } satisfies PreparedSymbol;
 }
 
 function topClass(logits: Float32Array) {
@@ -241,6 +240,17 @@ function topClass(logits: Float32Array) {
 
 function toLatex(raw: string) {
   return raw.replaceAll('*', ' \\cdot ');
+}
+
+function batchTensorData(symbols: PreparedSymbol[], imgSize: number) {
+  const pixelsPerSymbol = imgSize * imgSize;
+  const batch = new Float32Array(symbols.length * pixelsPerSymbol);
+
+  symbols.forEach((symbol, index) => {
+    batch.set(symbol.tensorData, index * pixelsPerSymbol);
+  });
+
+  return new ort.Tensor('float32', batch, [symbols.length, 1, imgSize, imgSize]);
 }
 
 export class LocalMathOnnxAdapter implements VLMAdapter {
@@ -327,22 +337,24 @@ export class LocalMathOnnxAdapter implements VLMAdapter {
     }
 
     const groups = groupStrokes(image.strokes);
-    const symbols: SymbolPrediction[] = [];
-
-    for (const group of groups) {
-      const groupedStrokes = group.map((index) => image.strokes[index]);
-      const { canvas, bbox } = rasterizeGroup(groupedStrokes, IMAGE_SIZE);
-      const tensor = canvasToTensor(canvas, IMAGE_SIZE);
-      const result = await this.session.run({ [MODEL_INPUT_NAME]: tensor });
-      const logits = result[MODEL_OUTPUT_NAME].data as Float32Array;
-      const topPrediction = topClass(logits);
-
-      symbols.push({
+    const preparedSymbols = groups.map((group) =>
+      rasterizeGroup(
+        group.map((index) => image.strokes[index]),
+        IMAGE_SIZE,
+      ),
+    );
+    const batchedTensor = batchTensorData(preparedSymbols, IMAGE_SIZE);
+    const result = await this.session.run({ [MODEL_INPUT_NAME]: batchedTensor });
+    const logits = result[MODEL_OUTPUT_NAME].data as Float32Array;
+    const stride = CLASSES.length;
+    const symbols: SymbolPrediction[] = preparedSymbols.map((preparedSymbol, index) => {
+      const topPrediction = topClass(logits.subarray(index * stride, (index + 1) * stride));
+      return {
         symbol: topPrediction.symbol,
         confidence: topPrediction.confidence,
-        bbox,
-      });
-    }
+        bbox: preparedSymbol.bbox,
+      };
+    });
 
     symbols.sort((a, b) => a.bbox.cx - b.bbox.cx);
     const raw = symbols.map((symbol) => symbol.symbol).join('');
