@@ -1,21 +1,59 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { validateVlmResult } from './solver/validate';
-import type { RasterizedRow } from './types';
+import { MathBlock } from './ui/MathBlock';
 import { SheetSurface } from './ui/SheetSurface';
-import { LocalMathOnnxAdapter } from './vlm/localMath';
+import type { RasterizedRow, VLMResult } from './types';
 import type { VlmStatus } from './vlm/adapter';
+import { Lfm25OnnxWebGpuAdapter } from './vlm/lfm25';
 
-const adapter = new LocalMathOnnxAdapter();
-const COLOR_OPTIONS = ['#14253d', '#2f80ed', '#1f9d55', '#d97706', '#c2410c', '#be185d'];
+const adapter = new Lfm25OnnxWebGpuAdapter();
+const COLOR_OPTIONS = ['#16110b', '#6b2416', '#24354a', '#2b5c47'];
+
+type RecognitionState = {
+  image?: RasterizedRow;
+  result?: VLMResult;
+  error?: string;
+  strokeCount: number;
+  recognizedAt: number | null;
+};
+
+function getStatusProgress(status: VlmStatus) {
+  return status.stage === 'loading' ? status.progress : undefined;
+}
 
 export default function App() {
   const [tool, setTool] = useState<'pencil' | 'eraser'>('pencil');
-  const [strokeSize, setStrokeSize] = useState(14);
+  const [strokeSize, setStrokeSize] = useState(5);
   const [strokeColor, setStrokeColor] = useState(COLOR_OPTIONS[0]);
+  const [recognition, setRecognition] = useState<RecognitionState | null>(null);
+  const [preview, setPreview] = useState<{
+    image: RasterizedRow | null;
+    strokeCount: number;
+    hasInk: boolean;
+  }>({
+    image: null,
+    strokeCount: 0,
+    hasInk: false,
+  });
   const [modelStatus, setModelStatus] = useState<VlmStatus>({
     stage: 'idle',
-    message: 'Preparing model runtime...',
+    message: 'Preparing LiquidAI ONNX runtime...',
   });
+  const statusClassName = useMemo(() => {
+    if (modelStatus.stage === 'error') {
+      return 'status-bar error';
+    }
+
+    if (modelStatus.stage === 'loading' || modelStatus.stage === 'checking') {
+      return 'status-bar busy';
+    }
+
+    if (modelStatus.stage === 'ready') {
+      return 'status-bar ready';
+    }
+
+    return 'status-bar';
+  }, [modelStatus.stage]);
 
   useEffect(() => {
     setModelStatus({
@@ -54,111 +92,184 @@ export default function App() {
 
   return (
     <main className="app-shell">
-      <section className="paper-stage">
-        <div className="paper-sheet feed-paper">
-          <header className="workspace-header">
-            <div className="workspace-title">
-              <div className="brand-mark">
-                <span className="brand-dot" />
-                <p className="eyebrow">Slate Workspace</p>
-              </div>
-              <h1>Live sheet</h1>
-            </div>
-          </header>
+      <div className="page">
+        <header className="app-header">
+          <div className="header-meta">Vol. I · Formula Desk</div>
+          <h1>Inkwell HMR</h1>
+          <div className="header-meta header-meta-right">LiquidAI · 450M · ONNX</div>
+          <p className="tagline">
+            A dedicated handwritten-formula recognition workstation tuned for explicit crop,
+            preview, and LaTeX inspection.
+          </p>
+        </header>
 
-          <div className="workspace-toolbar">
-            <div className="tool-group" aria-label="Drawing tool">
-              <span className="tool-group-label">Tool</span>
-              <div className="segmented-control">
-                <button
-                  type="button"
-                  className={tool === 'pencil' ? 'segment-button is-active' : 'segment-button'}
-                  onClick={() => setTool('pencil')}
-                >
-                  Pencil
-                </button>
-                <button
-                  type="button"
-                  className={tool === 'eraser' ? 'segment-button is-active' : 'segment-button'}
-                  onClick={() => setTool('eraser')}
-                >
-                  Eraser
-                </button>
-              </div>
-            </div>
-
-            <div className="tool-group" aria-label="Stroke thickness">
-              <label className="tool-group-label" htmlFor="stroke-size">
-                {tool === 'eraser' ? 'Eraser size' : 'Thickness'}
-              </label>
-              <div className="slider-control">
-                <input
-                  id="stroke-size"
-                  type="range"
-                  min="6"
-                  max="32"
-                  step="1"
-                  value={strokeSize}
-                  onChange={(event) => setStrokeSize(Number(event.target.value))}
-                />
-                <span className="slider-value">{strokeSize}px</span>
-              </div>
-            </div>
-
-            <div className="tool-group" aria-label="Stroke color">
-              <span className="tool-group-label">Color</span>
-              <div className="color-swatch-row">
-                {COLOR_OPTIONS.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    className={
-                      color === strokeColor ? 'color-swatch is-active' : 'color-swatch'
-                    }
-                    style={{ backgroundColor: color }}
-                    onClick={() => setStrokeColor(color)}
-                    aria-label={`Choose ${color} ink`}
-                    aria-pressed={color === strokeColor}
-                    disabled={tool === 'eraser'}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="tool-group tool-group-model" aria-label="Active model">
-              <span className="tool-group-label">Model</span>
-              <div className="model-select" aria-live="polite">
-                {adapter.label}
-              </div>
+        <div className="workspace-toolbar">
+          <div className="tool-group" aria-label="Drawing tool">
+            <span className="tool-group-label">Tool</span>
+            <div className="segmented-control">
+              <button
+                type="button"
+                className={tool === 'pencil' ? 'segment-button is-active' : 'segment-button'}
+                onClick={() => setTool('pencil')}
+              >
+                Ink
+              </button>
+              <button
+                type="button"
+                className={tool === 'eraser' ? 'segment-button is-active' : 'segment-button'}
+                onClick={() => setTool('eraser')}
+              >
+                Erase
+              </button>
             </div>
           </div>
 
-          <div className={`model-status-banner status-${modelStatus.stage}`}>
-            <div>
-              <p className="model-status-title">Model status</p>
-              <p className="model-status-copy">{modelStatus.message}</p>
+          <div className="tool-group" aria-label="Stroke thickness">
+            <label className="tool-group-label" htmlFor="stroke-size">
+              {tool === 'eraser' ? 'Eraser width' : 'Stroke width'}
+            </label>
+            <div className="slider-control">
+              <input
+                id="stroke-size"
+                type="range"
+                min="2"
+                max="12"
+                step="0.5"
+                value={strokeSize}
+                onChange={(event) => setStrokeSize(Number(event.target.value))}
+              />
+              <span className="slider-value">{strokeSize}px</span>
             </div>
-            {modelStatus.stage === 'loading' && typeof modelStatus.progress === 'number' && (
-              <div className="model-progress">
-                <div
-                  className="model-progress-bar"
-                  style={{ width: `${Math.max(4, Math.min(100, modelStatus.progress * 100))}%` }}
-                />
-              </div>
-            )}
           </div>
 
-          <div className="paper-line live-paper-line">
-            <SheetSurface
-              adapter={adapter}
-              onValidateResult={handleInterpret}
-              tool={tool}
-              strokeColor={strokeColor}
-              strokeSize={strokeSize}
-            />
+          <div className="tool-group" aria-label="Stroke color">
+            <span className="tool-group-label">Ink tone</span>
+            <div className="color-swatch-row">
+              {COLOR_OPTIONS.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  className={color === strokeColor ? 'color-swatch is-active' : 'color-swatch'}
+                  style={{ backgroundColor: color }}
+                  onClick={() => setStrokeColor(color)}
+                  aria-label={`Choose ${color} ink`}
+                  aria-pressed={color === strokeColor}
+                  disabled={tool === 'eraser'}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="tool-group tool-group-model" aria-label="Model">
+            <span className="tool-group-label">Model</span>
+            <div className="model-pill">{adapter.label}</div>
           </div>
         </div>
-      </section>
+
+        <div className={statusClassName}>
+          <span className="dot" />
+          <span className="status-message">{modelStatus.message}</span>
+          <span className="progress">
+            <span
+              style={{
+                width: `${Math.max(
+                  6,
+                  Math.min(100, Math.round((getStatusProgress(modelStatus) ?? 0.12) * 100)),
+                )}%`,
+              }}
+            />
+          </span>
+        </div>
+
+        <div className="workspace">
+          <SheetSurface
+            adapter={adapter}
+            onRecognize={handleInterpret}
+            onRecognized={({ image, result, strokeCount, recognizedAt }) => {
+              setRecognition({
+                image,
+                result,
+                strokeCount,
+                recognizedAt,
+              });
+            }}
+            onPreviewChange={setPreview}
+            onRecognitionError={({ image, message, strokeCount }) => {
+              setRecognition({
+                image: image ?? preview.image ?? undefined,
+                error: message,
+                strokeCount,
+                recognizedAt: Date.now(),
+              });
+            }}
+            onResetOutput={() => setRecognition(null)}
+            tool={tool}
+            strokeColor={strokeColor}
+            strokeSize={strokeSize}
+          />
+
+          <section className="panel">
+            <div className="panel-label">II. Recognize</div>
+
+            <div className={recognition?.result?.latex ? 'render-box' : 'render-box empty'}>
+              {recognition?.result?.latex ? (
+                <MathBlock latex={recognition.result.latex} />
+              ) : recognition?.error ? (
+                recognition.error
+              ) : (
+                'Recognized formula renders here once the model completes.'
+              )}
+            </div>
+
+            <div className="panel-label">III. LaTeX Source</div>
+            <div
+              className={
+                recognition?.result?.latex || recognition?.error ? 'latex-box' : 'latex-box empty'
+              }
+            >
+              {recognition?.result?.latex ?? recognition?.error ?? '(no output yet)'}
+            </div>
+
+            <div className={preview.image ? 'preview-thumb visible' : 'preview-thumb'}>
+              {preview.image ? (
+                <img
+                  src={preview.image.dataUrl}
+                  alt="Detected formula crop preview"
+                  className="preview-image"
+                />
+              ) : (
+                <div className="preview-image preview-image-empty" />
+              )}
+              <div className="label">
+                Detection crop
+                <br />
+                {preview.image ? `${preview.image.width} × ${preview.image.height}` : 'Awaiting ink'}
+                <br />
+                {preview.strokeCount} stroke{preview.strokeCount === 1 ? '' : 's'}
+              </div>
+            </div>
+
+            <div className="meta">
+              <span>
+                {recognition?.result?.raw
+                  ? `Raw ${recognition.result.raw.length} chars`
+                  : recognition?.error
+                    ? 'Recognition failed'
+                    : 'Model idle'}
+              </span>
+              <span>
+                {recognition?.recognizedAt
+                  ? new Intl.DateTimeFormat(undefined, {
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      second: '2-digit',
+                    }).format(recognition.recognizedAt)
+                  : '—'}
+              </span>
+            </div>
+          </section>
+        </div>
+      </div>
     </main>
   );
 }

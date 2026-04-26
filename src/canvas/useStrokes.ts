@@ -209,10 +209,17 @@ export function useStrokes({
     setStrokes([]);
   };
 
+  const undo = () => {
+    activeStrokeIdRef.current = null;
+    setIsDrawing(false);
+    setStrokes((current) => current.slice(0, -1));
+  };
+
   return {
     strokes,
     isDrawing,
     clear,
+    undo,
     bind: {
       onPointerDown,
       onPointerMove,

@@ -1,238 +1,198 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getStroke } from 'perfect-freehand';
 import type { VLMAdapter } from '../vlm/adapter';
-import type { RasterizedRow, Stroke } from '../types';
-import { usePauseDetector } from '../canvas/pauseDetector';
+import type { RasterizedRow, VLMResult } from '../types';
 import { rasterizeStrokes } from '../canvas/rasterize';
 import { useStrokes } from '../canvas/useStrokes';
-import { MathBlock } from './MathBlock';
 
 type SheetSurfaceProps = {
   adapter: VLMAdapter;
   tool: 'pencil' | 'eraser';
   strokeColor: string;
   strokeSize: number;
-  onValidateResult: (image: RasterizedRow) => Promise<{ latex: string }>;
+  onRecognize: (image: RasterizedRow) => Promise<VLMResult>;
+  onRecognized: (payload: {
+    image: RasterizedRow;
+    result: VLMResult;
+    strokeCount: number;
+    recognizedAt: number;
+  }) => void;
+  onPreviewChange: (payload: {
+    image: RasterizedRow | null;
+    strokeCount: number;
+    hasInk: boolean;
+  }) => void;
+  onRecognitionError: (payload: {
+    image: RasterizedRow | null;
+    message: string;
+    strokeCount: number;
+  }) => void;
+  onResetOutput: () => void;
 };
 
-type Placement = {
-  id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  latex?: string;
-  error?: string;
-  status: 'pending' | 'ready' | 'error';
-};
-
-const getStrokeOptions = (size: number) => ({
-  size,
-  thinning: 0.68,
-  smoothing: 0.5,
-  streamline: 0.4,
-  simulatePressure: false,
-});
-
-const getStrokeBounds = (strokes: Stroke[]) => {
-  const outlinePoints = strokes.flatMap((stroke) =>
-    getStroke(
-      stroke.points.map((point) => [point.x, point.y, point.pressure] as const),
-      getStrokeOptions(stroke.size),
-    ),
-  );
-
-  if (outlinePoints.length === 0) {
-    return null;
+function formatTime(timestamp: number | null) {
+  if (!timestamp) {
+    return 'No recognition yet';
   }
 
-  let minX = Number.POSITIVE_INFINITY;
-  let minY = Number.POSITIVE_INFINITY;
-  let maxX = Number.NEGATIVE_INFINITY;
-  let maxY = Number.NEGATIVE_INFINITY;
-
-  for (const [x, y] of outlinePoints) {
-    minX = Math.min(minX, x);
-    minY = Math.min(minY, y);
-    maxX = Math.max(maxX, x);
-    maxY = Math.max(maxY, y);
-  }
-
-  return {
-    x: minX,
-    y: minY,
-    width: Math.max(48, maxX - minX),
-    height: Math.max(36, maxY - minY),
-  };
-};
+  return new Intl.DateTimeFormat(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(timestamp);
+}
 
 export function SheetSurface({
   adapter,
   tool,
   strokeColor,
   strokeSize,
-  onValidateResult,
+  onRecognize,
+  onRecognized,
+  onPreviewChange,
+  onRecognitionError,
+  onResetOutput,
 }: SheetSurfaceProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [lastInteractionAt, setLastInteractionAt] = useState<number | null>(null);
-  const [placements, setPlacements] = useState<Placement[]>([]);
-
-  const eraseRadius = useMemo(() => Math.max(10, strokeSize), [strokeSize]);
-
-  const { strokes, isDrawing, clear, bind } = useStrokes({
+  const [isRecognizing, setIsRecognizing] = useState(false);
+  const [lastRecognizedAt, setLastRecognizedAt] = useState<number | null>(null);
+  const { strokes, isDrawing, clear, undo, bind } = useStrokes({
     canvasRef,
     tool,
     strokeColor,
     strokeSize,
-    onErasePoint: (point) => {
-      setPlacements((current) =>
-        current.filter((placement) => {
-          const left = placement.x - eraseRadius;
-          const right = placement.x + placement.width + eraseRadius;
-          const top = placement.y - eraseRadius;
-          const bottom = placement.y + placement.height + eraseRadius;
-          return !(
-            point.x >= left &&
-            point.x <= right &&
-            point.y >= top &&
-            point.y <= bottom
-          );
-        }),
-      );
-    },
   });
 
-  useEffect(() => {
-    if (strokes.length === 0) {
-      return;
-    }
-
-    setLastInteractionAt(Date.now());
-  }, [strokes]);
-
   const hasInk = strokes.length > 0;
+  const helperCopy = useMemo(() => {
+    if (tool === 'eraser') {
+      return hasInk ? 'Erase marks directly from the formula region.' : 'Switch back to ink to write a formula.';
+    }
 
-  const submit = async () => {
+    if (isRecognizing) {
+      return 'Recognition in progress...';
+    }
+
+    if (!adapter.isReady()) {
+      return 'Model is preparing. You can still sketch while it loads.';
+    }
+
+    if (isDrawing) {
+      return 'Inscribing formula...';
+    }
+
+    return hasInk
+      ? 'Formula region detected. Recognize when the crop looks right.'
+      : 'Write a formula inside the frame, then recognize it.';
+  }, [adapter, hasInk, isDrawing, isRecognizing, tool]);
+
+  useEffect(() => {
     if (!hasInk) {
+      onPreviewChange({
+        image: null,
+        strokeCount: 0,
+        hasInk: false,
+      });
       return;
     }
 
-    const bounds = getStrokeBounds(strokes);
-    const rasterized = rasterizeStrokes(strokes);
-    if (!bounds || !rasterized) {
-      return;
-    }
+    const rasterized = rasterizeStrokes(strokes, 1);
+    onPreviewChange({
+      image: rasterized,
+      strokeCount: strokes.length,
+      hasInk: true,
+    });
+  }, [hasInk, onPreviewChange, strokes]);
 
-    const placementId = `placement-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const handleClear = () => {
     clear();
-    setLastInteractionAt(null);
-    setPlacements((current) => [
-      ...current,
-      {
-        id: placementId,
-        x: bounds.x,
-        y: bounds.y,
-        width: bounds.width,
-        height: bounds.height,
-        status: 'pending',
-      },
-    ]);
+    onResetOutput();
+  };
 
+  const handleUndo = () => {
+    undo();
+    onResetOutput();
+  };
+
+  const handleRecognize = async () => {
+    if (!hasInk || isRecognizing) {
+      return;
+    }
+
+    const rasterized = rasterizeStrokes(strokes);
+    if (!rasterized) {
+      onRecognitionError({
+        image: null,
+        message: 'Unable to prepare a crop from the current strokes.',
+        strokeCount: strokes.length,
+      });
+      return;
+    }
+
+    setIsRecognizing(true);
     try {
-      const result = await onValidateResult(rasterized);
-      setPlacements((current) =>
-        current.map((placement) =>
-          placement.id === placementId
-            ? {
-                ...placement,
-                latex: result.latex,
-                status: 'ready',
-              }
-            : placement,
-        ),
-      );
+      const result = await onRecognize(rasterized);
+      const recognizedAt = Date.now();
+      setLastRecognizedAt(recognizedAt);
+      onRecognized({
+        image: rasterized,
+        result,
+        strokeCount: strokes.length,
+        recognizedAt,
+      });
     } catch (error) {
-      setPlacements((current) =>
-        current.map((placement) =>
-          placement.id === placementId
-            ? {
-                ...placement,
-                error:
-                  error instanceof Error
-                    ? error.message
-                    : 'Unable to interpret this handwriting yet.',
-                status: 'error',
-              }
-            : placement,
-        ),
-      );
+      onRecognitionError({
+        image: rasterized,
+        message:
+          error instanceof Error ? error.message : 'Unable to recognize this formula yet.',
+        strokeCount: strokes.length,
+      });
+    } finally {
+      setIsRecognizing(false);
     }
   };
 
-  const timeLeft = usePauseDetector({
-    enabled: hasInk,
-    isDrawing,
-    lastInteractionAt,
-    thresholdMs: 500,
-    onPause: () => {
-      void submit();
-    },
-  });
-
   return (
-    <div className="sheet-surface-shell">
-      <div className="sheet-surface">
-        {placements.map((placement) => (
-          <div
-            key={placement.id}
-            className={`sheet-placement placement-${placement.status}`}
-            style={{
-              left: placement.x,
-              top: placement.y,
-              minWidth: placement.width,
-              minHeight: placement.height,
-            }}
-          >
-            {placement.status === 'ready' && placement.latex && (
-              <MathBlock latex={placement.latex} />
-            )}
-            {placement.status === 'pending' && (
-              <p className="placement-status">Interpreting...</p>
-            )}
-            {placement.status === 'error' && (
-              <p className="placement-error">{placement.error}</p>
-            )}
-          </div>
-        ))}
+    <section className="panel">
+      <div className="panel-label">I. Inscribe</div>
 
+      <div className="canvas-wrap">
+        <span className="corner tl" />
+        <span className="corner tr" />
+        <span className="corner bl" />
+        <span className="corner br" />
+        <span className="baseline" />
         <canvas
           ref={canvasRef}
-          className="ink-canvas sheet-overlay-canvas"
+          className="ink-canvas formula-canvas"
           {...bind}
         />
       </div>
 
-      <div className="canvas-toolbar">
-        <span>
-          {tool === 'eraser'
-            ? 'Erase handwriting or rendered placements directly on the sheet'
-            : !adapter.isReady()
-              ? 'Model is still preparing. You can draw now and interpret once it is ready.'
-            : hasInk
-              ? isDrawing
-                ? 'Writing...'
-                : `Replacing handwriting in ${Math.max(
-                    0,
-                    Math.ceil((timeLeft ?? 0) / 100),
-                  ) / 10}s`
-              : `Using ${adapter.label} to replace handwriting in place`}
-        </span>
-        <div className="canvas-actions">
-          <button type="button" onClick={clear} disabled={!hasInk}>
-            Clear ink
-          </button>
-        </div>
+      <div className="controls">
+        <button
+          type="button"
+          className="primary"
+          onClick={handleRecognize}
+          disabled={!hasInk || isRecognizing || !adapter.isReady()}
+        >
+          Recognize
+        </button>
+        <button type="button" onClick={handleClear} disabled={!hasInk || isRecognizing}>
+          Clear
+        </button>
+        <button type="button" onClick={handleUndo} disabled={!hasInk || isRecognizing}>
+          Undo
+        </button>
       </div>
-    </div>
+
+      <div className="recognition-helper">
+        <p>{helperCopy}</p>
+      </div>
+
+      <div className="meta">
+        <span>{strokes.length} stroke{strokes.length === 1 ? '' : 's'}</span>
+        <span>{formatTime(lastRecognizedAt)}</span>
+      </div>
+    </section>
   );
 }
