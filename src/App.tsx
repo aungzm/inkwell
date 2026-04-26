@@ -4,9 +4,19 @@ import { MathBlock } from './ui/MathBlock';
 import { SheetSurface } from './ui/SheetSurface';
 import type { RasterizedRow, VLMResult } from './types';
 import type { VlmStatus } from './vlm/adapter';
+import { FastVlmOnnxWebGpuAdapter } from './vlm/fastvlm';
 import { Lfm25OnnxWebGpuAdapter } from './vlm/lfm25';
+import type { VLMAdapter } from './vlm/adapter';
 
-const adapter = new Lfm25OnnxWebGpuAdapter();
+const ADAPTERS: Record<string, () => VLMAdapter> = {
+  'lfm25': () => new Lfm25OnnxWebGpuAdapter(),
+  'fastvlm': () => new FastVlmOnnxWebGpuAdapter(),
+};
+const ADAPTER_LABELS: Record<string, string> = {
+  'lfm25': 'LiquidAI LFM2.5-VL 450M',
+  'fastvlm': 'FastVLM 0.5B',
+};
+const DEFAULT_ADAPTER_KEY = 'lfm25';
 const COLOR_OPTIONS = ['#16110b', '#6b2416', '#24354a', '#2b5c47'];
 
 type RecognitionState = {
@@ -35,9 +45,11 @@ export default function App() {
     strokeCount: 0,
     hasInk: false,
   });
+  const [adapterKey, setAdapterKey] = useState<string>(DEFAULT_ADAPTER_KEY);
+  const adapter = useMemo(() => ADAPTERS[adapterKey](), [adapterKey]);
   const [modelStatus, setModelStatus] = useState<VlmStatus>({
     stage: 'idle',
-    message: 'Preparing LiquidAI ONNX runtime...',
+    message: `Preparing ${ADAPTER_LABELS[adapterKey]}...`,
   });
   const statusClassName = useMemo(() => {
     if (modelStatus.stage === 'error') {
@@ -84,8 +96,9 @@ export default function App() {
     return () => {
       cancelled = true;
       adapter.setStatusListener(null);
+      void adapter.unload();
     };
-  }, []);
+  }, [adapter]);
 
   const handleInterpret = async (image: RasterizedRow) =>
     validateVlmResult(await adapter.transcribe(image));
@@ -162,7 +175,17 @@ export default function App() {
 
           <div className="tool-group tool-group-model" aria-label="Model">
             <span className="tool-group-label">Model</span>
-            <div className="model-pill">{adapter.label}</div>
+            <select
+              className="model-pill"
+              value={adapterKey}
+              onChange={(event) => setAdapterKey(event.target.value)}
+            >
+              {Object.keys(ADAPTERS).map((key) => (
+                <option key={key} value={key}>
+                  {ADAPTER_LABELS[key]}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
