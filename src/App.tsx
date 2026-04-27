@@ -108,7 +108,7 @@ export default function App() {
       <div className="page">
         <header className="app-header">
           <div className="header-meta">Vol. I · Formula Desk</div>
-          <h1>Inkwell HMR</h1>
+          <h1>Inkwell</h1>
           <div className="header-meta header-meta-right">LiquidAI · 450M · ONNX</div>
           <p className="tagline">
             A dedicated handwritten-formula recognition workstation tuned for explicit crop,
