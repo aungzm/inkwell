@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import katex from 'katex';
 
 type MathBlockProps = {
@@ -5,15 +6,22 @@ type MathBlockProps = {
 };
 
 export function MathBlock({ latex }: MathBlockProps) {
-  return (
-    <div
-      className="math-block"
-      dangerouslySetInnerHTML={{
-        __html: katex.renderToString(latex, {
-          throwOnError: false,
-          displayMode: true,
-        }),
-      }}
-    />
-  );
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+
+    katex.render(latex, container, {
+      throwOnError: false,
+      displayMode: true,
+      trust: false,
+      strict: 'ignore',
+      output: 'htmlAndMathml',
+    });
+  }, [latex]);
+
+  return <div ref={containerRef} className="math-block" />;
 }
