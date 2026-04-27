@@ -4,6 +4,8 @@ A handwritten-formula recognition workstation that runs entirely in your browser
 
 Inkwell is built on WebGPU + ONNX Runtime Web, so the whole inference pipeline executes locally against models like LiquidAI LFM2.5-VL and FastVLM.
 
+**Live demo:** <https://ink.aungzm.com/>
+
 ## Stack
 
 - **React 19** + **Vite 7** + **TypeScript** for the UI
