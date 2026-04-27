@@ -15,14 +15,29 @@ Inkwell is built on WebGPU + ONNX Runtime Web, so the whole inference pipeline e
 
 ## Getting started
 
-Requires a Chromium-based browser with WebGPU enabled.
-
 ```bash
 pnpm install
 pnpm dev
 ```
 
-Then open the dev server URL printed in the terminal. The selected model is fetched and cached on first load — subsequent loads are instant.
+Then open the dev server URL printed in the terminal.
+
+### Browser support
+
+Use a **Chromium-based browser** (Chrome, Edge, Brave, Arc, Opera). WebGPU is enabled by default in Chromium since v113 and the ONNX Runtime Web pipeline is well exercised there.
+
+- **Safari** — WebGPU shipped in 18.4 but coverage of the ops Transformers.js needs is still partial; expect crashes or fallback errors.
+- **Firefox** — WebGPU is behind `dom.webgpu.enabled` and considered experimental. Inkwell may load the runtime but fail during inference.
+
+### System requirements
+
+- **RAM:** 8 GB minimum, 16 GB recommended. The 450M / 0.5B model weights, KV cache, and image buffers all sit in GPU + system memory at once.
+- **GPU:** any discrete GPU or modern integrated GPU (Intel Iris Xe, Apple M-series, AMD Radeon 6xxx+, NVIDIA GTX 10-series+) with WebGPU support.
+- **Disk:** ~600 MB free for the browser cache to hold the ONNX weights between sessions.
+
+### First load
+
+The first time you pick a model, the browser downloads its ONNX weights from the HuggingFace CDN — roughly **400–600 MB per model**, depending on the chosen quantisation. On a typical home connection this can take **30 seconds to a couple of minutes**, and the canvas will sit behind a "Loading…" status bar the whole time. Once cached by the browser, subsequent loads are near-instant.
 
 Other scripts:
 
