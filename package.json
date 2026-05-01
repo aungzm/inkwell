@@ -12,7 +12,7 @@
     "deploy": "pnpm run build && wrangler deploy"
   },
   "dependencies": {
-    "@huggingface/transformers": "next",
+    "@huggingface/transformers": "^4.2.0",
     "katex": "^0.16.11",
     "onnxruntime-web": "1.26.0-dev.20260416-b7804b056c",
     "perfect-freehand": "^1.2.2",

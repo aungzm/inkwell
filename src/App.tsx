@@ -5,16 +5,19 @@ import { SheetSurface } from './ui/SheetSurface';
 import type { RasterizedRow, VLMResult } from './types';
 import type { VlmStatus } from './vlm/adapter';
 import { FastVlmOnnxWebGpuAdapter } from './vlm/fastvlm';
+import { Gemma4OnnxWebGpuAdapter } from './vlm/gemma4';
 import { Lfm25OnnxWebGpuAdapter } from './vlm/lfm25';
 import type { VLMAdapter } from './vlm/adapter';
 
 const ADAPTERS: Record<string, () => VLMAdapter> = {
   'lfm25': () => new Lfm25OnnxWebGpuAdapter(),
   'fastvlm': () => new FastVlmOnnxWebGpuAdapter(),
+  'gemma4': () => new Gemma4OnnxWebGpuAdapter(),
 };
 const ADAPTER_LABELS: Record<string, string> = {
   'lfm25': 'LiquidAI LFM2.5-VL 450M',
   'fastvlm': 'FastVLM 0.5B',
+  'gemma4': 'Gemma 4 E2B',
 };
 const DEFAULT_ADAPTER_KEY = 'lfm25';
 const COLOR_OPTIONS = ['#16110b', '#6b2416', '#24354a', '#2b5c47'];
