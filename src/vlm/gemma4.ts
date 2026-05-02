@@ -33,9 +33,11 @@ const TRANSCRIPTION_PROMPT =
 
 function extractGemmaText(decoded: string) {
   const withoutChannels = decoded
+    .replace(/<pad>/gi, ' ')
     .replace(/<\|channel\|>thought\s*/gi, '')
     .replace(/<\|channel\|>/gi, '')
     .replace(/<\|[a-z_]+\|>/gi, '')
+    .replace(/\s+/g, ' ')
     .trim();
 
   return withoutChannels;
