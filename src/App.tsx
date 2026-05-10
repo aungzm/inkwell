@@ -42,11 +42,11 @@ export default function App() {
   const [preview, setPreview] = useState<{
     image: RasterizedRow | null;
     strokeCount: number;
-    hasInk: boolean;
+    hasContent: boolean;
   }>({
     image: null,
     strokeCount: 0,
-    hasInk: false,
+    hasContent: false,
   });
   const [adapterKey, setAdapterKey] = useState<string>(DEFAULT_ADAPTER_KEY);
   const adapter = useMemo(() => ADAPTERS[adapterKey](), [adapterKey]);
@@ -269,7 +269,9 @@ export default function App() {
               <div className="label">
                 Detection crop
                 <br />
-                {preview.image ? `${preview.image.width} × ${preview.image.height}` : 'Awaiting ink'}
+                {preview.image
+                  ? `${preview.image.width} × ${preview.image.height}`
+                  : 'Awaiting content'}
                 <br />
                 {preview.strokeCount} stroke{preview.strokeCount === 1 ? '' : 's'}
               </div>
