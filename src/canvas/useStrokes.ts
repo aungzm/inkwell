@@ -191,15 +191,16 @@ export function useStrokes({
   };
 
   const finishStroke = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    if (!activeStrokeIdRef.current) {
-      return;
-    }
-
+    const wasDrawing = isDrawing || Boolean(activeStrokeIdRef.current);
     activeStrokeIdRef.current = null;
     setIsDrawing(false);
 
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    if (!wasDrawing) {
+      return;
     }
   };
 
