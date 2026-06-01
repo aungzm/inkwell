@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { evaluateLatex } from './solver/evaluate';
 import { validateVlmResult } from './solver/validate';
 import { MathBlock } from './ui/MathBlock';
 import { SheetSurface } from './ui/SheetSurface';
@@ -102,6 +103,11 @@ export default function App() {
       void adapter.unload();
     };
   }, [adapter]);
+
+  const evaluation = useMemo(
+    () => (recognition?.result?.latex ? evaluateLatex(recognition.result.latex) : null),
+    [recognition?.result?.latex],
+  );
 
   const handleInterpret = async (image: RasterizedRow) =>
     validateVlmResult(await adapter.transcribe(image));
@@ -234,6 +240,7 @@ export default function App() {
             strokeSize={strokeSize}
           />
 
+          <div className="result-column">
           <section className="panel">
             <div className="panel-label">Recognize</div>
 
@@ -296,6 +303,21 @@ export default function App() {
               </span>
             </div>
           </section>
+
+          <section className="panel">
+            <div className="panel-label">Calculation</div>
+            <div className={evaluation ? 'calc-box' : 'calc-box empty'}>
+              {evaluation ? (
+                <div className="calc-result">
+                  <span className="calc-sign">{evaluation.approximate ? '≈' : '='}</span>
+                  <span className="calc-number">{evaluation.display}</span>
+                </div>
+              ) : (
+                'A numeric result appears here when the formula can be evaluated.'
+              )}
+            </div>
+          </section>
+          </div>
         </div>
       </div>
     </main>
