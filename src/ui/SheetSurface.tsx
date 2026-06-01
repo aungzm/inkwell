@@ -330,13 +330,9 @@ export function SheetSurface({
 
   return (
     <section className="panel">
-      <div className="panel-label">I. Inscribe</div>
+      <div className="panel-label">Inscribe</div>
 
       <div className="canvas-wrap">
-        <span className="corner tl" />
-        <span className="corner tr" />
-        <span className="corner bl" />
-        <span className="corner br" />
         <span className="baseline" />
         <canvas
           ref={backgroundCanvasRef}

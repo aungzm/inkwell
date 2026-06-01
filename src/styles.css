@@ -3,18 +3,23 @@
   font-family: 'Georgia', 'Times New Roman', serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #19130d;
-  background: #f4ede0;
-  --paper: #f4ede0;
-  --paper-deep: #ebe1cf;
-  --ink: #19130d;
-  --ink-soft: #3b3022;
-  --ink-faded: #746754;
-  --rule: #c8b993;
-  --accent: #a53a20;
-  --accent-soft: rgba(165, 58, 32, 0.08);
-  --grid: rgba(165, 58, 32, 0.07);
+  color: #0f2a43;
+  background: #f5f9fd;
+  --paper: #ffffff;
+  --paper-deep: #e8f1fb;
+  --ink: #0f2a43;
+  --ink-soft: #2c4a66;
+  --ink-faded: #5f7a93;
+  --rule: #c4d8ec;
+  --accent: #1f6feb;
+  --accent-soft: rgba(31, 111, 235, 0.08);
+  --grid: rgba(31, 111, 235, 0.07);
   --green: #2f7b46;
+  --radius: 18px;
+  --radius-sm: 12px;
+  --radius-pill: 999px;
+  --card-shadow: 0 10px 30px rgba(15, 42, 67, 0.07), 0 2px 6px rgba(15, 42, 67, 0.04);
+  --card-shadow-soft: 0 4px 14px rgba(15, 42, 67, 0.05);
 }
 
 * {
@@ -74,7 +79,7 @@ button:hover:not(:disabled) {
   align-items: end;
   margin-bottom: 26px;
   padding-bottom: 18px;
-  border-bottom: 3px double var(--ink);
+  border-bottom: 1px solid var(--rule);
 }
 
 .app-header h1 {
@@ -125,9 +130,11 @@ button,
   gap: 14px 18px;
   align-items: end;
   margin-bottom: 18px;
-  padding: 14px 16px;
+  padding: 18px 20px;
   border: 1px solid var(--rule);
-  background: rgba(255, 255, 255, 0.24);
+  border-radius: var(--radius);
+  background: var(--paper);
+  box-shadow: var(--card-shadow-soft);
 }
 
 .tool-group {
@@ -150,7 +157,9 @@ button,
 .segmented-control {
   display: inline-flex;
   border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
   background: var(--paper);
+  overflow: hidden;
 }
 
 .segment-button {
@@ -209,8 +218,8 @@ button,
 
 .color-swatch.is-active {
   box-shadow:
-    0 0 0 2px rgba(165, 58, 32, 0.35),
-    0 2px 6px rgba(25, 19, 13, 0.08);
+    0 0 0 2px rgba(31, 111, 235, 0.4),
+    0 2px 6px rgba(15, 42, 67, 0.1);
 }
 
 .color-swatch:disabled {
@@ -224,7 +233,8 @@ button,
   align-items: center;
   padding: 0 14px;
   border: 1px solid var(--rule);
-  background: rgba(255, 255, 255, 0.52);
+  border-radius: var(--radius-pill);
+  background: var(--paper);
   color: var(--ink);
   font-size: 0.8rem;
   letter-spacing: 0.08em;
@@ -236,8 +246,9 @@ button,
   align-items: center;
   gap: 14px;
   margin-bottom: 26px;
-  padding: 10px 16px;
+  padding: 12px 18px;
   border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
   background: var(--paper-deep);
   font-size: 0.76rem;
   letter-spacing: 0.08em;
@@ -307,17 +318,11 @@ button,
 
 .panel {
   position: relative;
-  padding: 20px;
+  padding: 24px;
   border: 1px solid var(--rule);
-  background: rgba(255, 255, 255, 0.18);
-}
-
-.panel::before {
-  content: '';
-  position: absolute;
-  inset: 4px;
-  border: 1px solid rgba(200, 185, 147, 0.55);
-  pointer-events: none;
+  border-radius: var(--radius);
+  background: var(--paper);
+  box-shadow: var(--card-shadow);
 }
 
 .panel-label {
@@ -342,11 +347,12 @@ button,
   position: relative;
   aspect-ratio: 16 / 9;
   overflow: hidden;
-  border: 1px solid var(--ink);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
   background:
     linear-gradient(var(--grid) 1px, transparent 1px),
     linear-gradient(90deg, var(--grid) 1px, transparent 1px),
-    #fffefb;
+    #ffffff;
   background-size: 32px 32px, 32px 32px, auto;
 }
 
@@ -378,8 +384,9 @@ button,
   bottom: 10px;
   max-width: min(52%, 260px);
   padding: 8px 10px;
-  border: 1px solid rgba(25, 19, 13, 0.2);
-  background: rgba(255, 254, 251, 0.9);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.92);
   color: var(--ink-faded);
   font-family: 'Consolas', 'Courier New', monospace;
   font-size: 0.62rem;
@@ -400,42 +407,6 @@ button,
   pointer-events: none;
 }
 
-.corner {
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  border: 1px solid var(--ink);
-  pointer-events: none;
-}
-
-.corner.tl {
-  top: 6px;
-  left: 6px;
-  border-right: none;
-  border-bottom: none;
-}
-
-.corner.tr {
-  top: 6px;
-  right: 6px;
-  border-left: none;
-  border-bottom: none;
-}
-
-.corner.bl {
-  bottom: 6px;
-  left: 6px;
-  border-right: none;
-  border-top: none;
-}
-
-.corner.br {
-  right: 6px;
-  bottom: 6px;
-  border-left: none;
-  border-top: none;
-}
-
 .controls {
   display: flex;
   flex-wrap: wrap;
@@ -444,8 +415,9 @@ button,
 }
 
 button {
-  border: 1px solid var(--ink);
-  padding: 11px 18px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-pill);
+  padding: 11px 20px;
   background: var(--paper);
   color: var(--ink);
   cursor: pointer;
@@ -454,14 +426,20 @@ button {
   text-transform: uppercase;
 }
 
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
 button.primary {
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(31, 111, 235, 0.25);
 }
 
 button.primary:hover:not(:disabled) {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: #1a5fcc;
+  border-color: #1a5fcc;
 }
 
 button:disabled {
@@ -472,9 +450,10 @@ button:disabled {
 
 .recognition-helper {
   margin-top: 14px;
-  padding: 10px 12px;
-  border: 1px solid rgba(200, 185, 147, 0.8);
-  background: rgba(255, 255, 255, 0.44);
+  padding: 12px 14px;
+  border: 1px solid rgba(196, 216, 236, 0.9);
+  border-radius: var(--radius-sm);
+  background: var(--paper-deep);
   color: var(--ink-soft);
   font-size: 0.76rem;
 }
@@ -488,7 +467,8 @@ button:disabled {
   margin-bottom: 16px;
   padding: 26px 20px;
   border: 1px solid var(--rule);
-  background: #fffefb;
+  border-radius: var(--radius-sm);
+  background: var(--paper-deep);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -505,6 +485,7 @@ button:disabled {
   min-height: 96px;
   padding: 16px;
   border: 1px solid var(--ink);
+  border-radius: var(--radius-sm);
   background: var(--ink);
   color: var(--paper);
   font-family: 'Consolas', 'Courier New', monospace;
@@ -514,7 +495,7 @@ button:disabled {
 }
 
 .latex-box.empty {
-  color: #c4b9a4;
+  color: #9db8d4;
   font-style: italic;
 }
 
@@ -525,6 +506,7 @@ button:disabled {
   margin-top: 18px;
   padding: 12px;
   border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
   background: var(--paper-deep);
 }
 
@@ -536,8 +518,9 @@ button:disabled {
   width: 96px;
   height: 96px;
   object-fit: contain;
-  background: #fffefb;
-  border: 1px solid var(--ink);
+  background: #ffffff;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius-sm);
   image-rendering: pixelated;
 }
 

@@ -20,7 +20,7 @@ const ADAPTER_LABELS: Record<string, string> = {
   'gemma4': 'Gemma 4 E2B',
 };
 const DEFAULT_ADAPTER_KEY = 'lfm25';
-const COLOR_OPTIONS = ['#16110b', '#6b2416', '#24354a', '#2b5c47'];
+const COLOR_OPTIONS = ['#0f2a43', '#1f6feb', '#0e7490', '#7c3aed'];
 
 type RecognitionState = {
   image?: RasterizedRow;
@@ -110,7 +110,7 @@ export default function App() {
     <main className="app-shell">
       <div className="page">
         <header className="app-header">
-          <div className="header-meta">Vol. I · Formula Desk</div>
+          <div className="header-meta" />
           <h1>Inkwell</h1>
           <div className="header-meta header-meta-right">LiquidAI · 450M · ONNX</div>
           <p className="tagline">
@@ -235,7 +235,7 @@ export default function App() {
           />
 
           <section className="panel">
-            <div className="panel-label">II. Recognize</div>
+            <div className="panel-label">Recognize</div>
 
             <div className={recognition?.result?.latex ? 'render-box' : 'render-box empty'}>
               {recognition?.result?.latex ? (
@@ -247,7 +247,7 @@ export default function App() {
               )}
             </div>
 
-            <div className="panel-label">III. LaTeX Source</div>
+            <div className="panel-label">LaTeX Source</div>
             <div
               className={
                 recognition?.result?.latex || recognition?.error ? 'latex-box' : 'latex-box empty'
