@@ -2,10 +2,13 @@ export type EvaluationResult = {
   value: number;
   display: string;
   approximate: boolean;
+  /** Set when the result came from solving an equation, e.g. "y" in "y = 1". */
+  variable?: string;
 };
 
 type Token =
   | { type: 'num'; value: number }
+  | { type: 'var'; name: string }
   | { type: 'op'; value: '+' | '-' | '*' | '/' | '^' }
   | { type: 'lparen' }
   | { type: 'rparen' }
@@ -16,6 +19,87 @@ type Token =
   | { type: 'cmd'; value: string }
   | { type: 'bang' };
 
+/**
+ * A value that is linear in (at most) a single variable: `a * v + k`.
+ * `v` is null exactly when `a` is 0 (a pure constant).
+ */
+type Linear = { k: number; a: number; v: string | null };
+
+const constant = (k: number): Linear => ({ k, a: 0, v: null });
+const variable = (name: string): Linear => ({ k: 0, a: 1, v: name });
+
+function sharedVar(x: Linear, y: Linear): string | null {
+  if (x.v && y.v && x.v !== y.v) {
+    throw new Error('more than one variable');
+  }
+  return x.v ?? y.v;
+}
+
+function add(x: Linear, y: Linear): Linear {
+  const v = sharedVar(x, y);
+  const a = x.a + y.a;
+  return a === 0 ? constant(x.k + y.k) : { k: x.k + y.k, a, v };
+}
+
+function negate(x: Linear): Linear {
+  return x.a === 0 ? constant(-x.k) : { k: -x.k, a: -x.a, v: x.v };
+}
+
+function multiply(x: Linear, y: Linear): Linear {
+  if (x.a === 0) {
+    const a = x.k * y.a;
+    return a === 0 ? constant(x.k * y.k) : { k: x.k * y.k, a, v: y.v };
+  }
+  if (y.a === 0) {
+    const a = y.k * x.a;
+    return a === 0 ? constant(x.k * y.k) : { k: x.k * y.k, a, v: x.v };
+  }
+  throw new Error('nonlinear product');
+}
+
+function divide(x: Linear, y: Linear): Linear {
+  if (y.a !== 0) {
+    throw new Error('nonlinear division');
+  }
+  const a = x.a / y.k;
+  return a === 0 ? constant(x.k / y.k) : { k: x.k / y.k, a, v: x.v };
+}
+
+function power(base: Linear, exponent: Linear): Linear {
+  if (exponent.a !== 0) {
+    throw new Error('variable exponent');
+  }
+  if (base.a === 0) {
+    return constant(Math.pow(base.k, exponent.k));
+  }
+  if (exponent.k === 1) {
+    return base;
+  }
+  if (exponent.k === 0) {
+    return constant(1);
+  }
+  throw new Error('nonlinear power');
+}
+
+function asNumber(x: Linear): number {
+  if (x.a !== 0) {
+    throw new Error('expected a constant');
+  }
+  return x.k;
+}
+
+function factorial(x: Linear): Linear {
+  const n = asNumber(x);
+  if (!Number.isInteger(n) || n < 0 || n > 170) {
+    throw new Error('factorial domain');
+  }
+  let result = 1;
+  for (let k = 2; k <= n; k++) {
+    result *= k;
+  }
+  return constant(result);
+}
+
 function tokenize(input: string): Token[] | null {
   const tokens: Token[] = [];
   let i = 0;
@@ -23,7 +107,6 @@ function tokenize(input: string): Token[] | null {
   while (i < input.length) {
     const c = input[i];
 
-    // Whitespace and LaTeX alignment/spacing glue.
     if (c === ' ' || c === '\t' || c === '\n' || c === '\r' || c === '&' || c === '~') {
       i++;
       continue;
@@ -33,7 +116,6 @@ function tokenize(input: string): Token[] | null {
       i++;
       const nextChar = input[i];
 
-      // Escaped symbol or spacing command like \, \! \; \{ \}
       if (nextChar !== undefined && !/[a-zA-Z]/.test(nextChar)) {
         i++;
         if (nextChar === '{') {
@@ -41,7 +123,6 @@ function tokenize(input: string): Token[] | null {
         } else if (nextChar === '}') {
           tokens.push({ type: 'rbrace' });
         }
-        // Other escapes (\, \! \; \  \%) are spacing — skip.
         continue;
       }
 
@@ -51,7 +132,6 @@ function tokenize(input: string): Token[] | null {
         i++;
       }
 
-      // \left( and \right) — the delimiter follows as its own token.
       if (name === 'left' || name === 'right') {
         continue;
       }
@@ -116,28 +196,22 @@ function tokenize(input: string): Token[] | null {
       continue;
     }
 
-    // Thousands separators and stray bars are decorative — ignore.
     if (c === ',' || c === '|') {
       i++;
       continue;
     }
 
-    // A bare letter means a variable/unknown — not a plain numeric expression.
+    // A bare letter is a variable (each letter is its own symbol).
+    if (/[a-zA-Z]/.test(c)) {
+      tokens.push({ type: 'var', name: c });
+      i++;
+      continue;
+    }
+
     return null;
   }
 
   return tokens;
-}
-
-function factorial(n: number): number {
-  if (!Number.isInteger(n) || n < 0 || n > 170) {
-    throw new Error('factorial domain');
-  }
-  let result = 1;
-  for (let k = 2; k <= n; k++) {
-    result *= k;
-  }
-  return result;
 }
 
 class Parser {
@@ -145,7 +219,7 @@ class Parser {
 
   constructor(private readonly tokens: Token[]) {}
 
-  parse(): number {
+  parse(): Linear {
     const value = this.parseExpr();
     if (this.i < this.tokens.length) {
       throw new Error('trailing tokens');
@@ -173,35 +247,35 @@ class Parser {
     }
   }
 
-  private parseExpr(): number {
+  private parseExpr(): Linear {
     let value = this.parseTerm();
     let token = this.peek();
     while (token && token.type === 'op' && (token.value === '+' || token.value === '-')) {
       this.next();
       const rhs = this.parseTerm();
-      value = token.value === '+' ? value + rhs : value - rhs;
+      value = token.value === '+' ? add(value, rhs) : add(value, negate(rhs));
       token = this.peek();
     }
     return value;
   }
 
-  private parseTerm(): number {
+  private parseTerm(): Linear {
     let value = this.parseUnary();
     let token = this.peek();
     while (token) {
       if (token.type === 'op' && (token.value === '*' || token.value === '/')) {
         this.next();
         const rhs = this.parseUnary();
-        value = token.value === '*' ? value * rhs : value / rhs;
+        value = token.value === '*' ? multiply(value, rhs) : divide(value, rhs);
       } else if (token.type === 'cmd' && (token.value === 'cdot' || token.value === 'times' || token.value === 'ast')) {
         this.next();
-        value *= this.parseUnary();
+        value = multiply(value, this.parseUnary());
       } else if (token.type === 'cmd' && token.value === 'div') {
         this.next();
-        value /= this.parseUnary();
+        value = divide(value, this.parseUnary());
       } else if (this.startsFactor(token)) {
-        // Implicit multiplication, e.g. 2(3+4) or 3\pi.
-        value *= this.parseUnary();
+        // Implicit multiplication, e.g. 5y, 2(3+4), 3\pi.
+        value = multiply(value, this.parseUnary());
       } else {
         break;
       }
@@ -211,7 +285,7 @@ class Parser {
   }
 
   private startsFactor(token: Token): boolean {
-    if (token.type === 'num' || token.type === 'lparen' || token.type === 'lbrace') {
+    if (token.type === 'num' || token.type === 'var' || token.type === 'lparen' || token.type === 'lbrace') {
       return true;
     }
     if (token.type === 'cmd') {
@@ -225,28 +299,27 @@ class Parser {
     return false;
   }
 
-  private parseUnary(): number {
+  private parseUnary(): Linear {
     const token = this.peek();
     if (token && token.type === 'op' && (token.value === '+' || token.value === '-')) {
       this.next();
       const value = this.parseUnary();
-      return token.value === '-' ? -value : value;
+      return token.value === '-' ? negate(value) : value;
     }
     return this.parsePower();
   }
 
-  private parsePower(): number {
+  private parsePower(): Linear {
     const base = this.parsePostfix();
     const token = this.peek();
     if (token && token.type === 'op' && token.value === '^') {
       this.next();
-      const exponent = this.parseUnary();
-      return Math.pow(base, exponent);
+      return power(base, this.parseUnary());
     }
     return base;
   }
 
-  private parsePostfix(): number {
+  private parsePostfix(): Linear {
     let value = this.parseAtom();
     let token = this.peek();
     while (token && token.type === 'bang') {
@@ -257,11 +330,13 @@ class Parser {
     return value;
   }
 
-  private parseAtom(): number {
+  private parseAtom(): Linear {
     const token = this.next();
     switch (token.type) {
       case 'num':
-        return token.value;
+        return constant(token.value);
+      case 'var':
+        return variable(token.name);
       case 'lparen': {
         const value = this.parseExpr();
         this.expect('rparen');
@@ -279,8 +354,7 @@ class Parser {
     }
   }
 
-  // A braced group {...}, or a single atom/power for bare arguments.
-  private parseGroup(): number {
+  private parseGroup(): Linear {
     const token = this.peek();
     if (token && token.type === 'lbrace') {
       this.next();
@@ -291,116 +365,163 @@ class Parser {
     return this.parsePower();
   }
 
-  private parseCommand(name: string): number {
+  private fn(apply: (n: number) => number): Linear {
+    return constant(apply(asNumber(this.parseGroup())));
+  }
+
+  private parseCommand(name: string): Linear {
     switch (name) {
       case 'pi':
-        return Math.PI;
+        return constant(Math.PI);
       case 'tau':
-        return Math.PI * 2;
+        return constant(Math.PI * 2);
       case 'frac':
       case 'dfrac':
       case 'tfrac': {
         const numerator = this.parseGroup();
         const denominator = this.parseGroup();
-        return numerator / denominator;
+        return divide(numerator, denominator);
       }
       case 'sqrt': {
         let degree = 2;
         const token = this.peek();
         if (token && token.type === 'lbracket') {
           this.next();
-          degree = this.parseExpr();
+          degree = asNumber(this.parseExpr());
           this.expect('rbracket');
         }
-        return Math.pow(this.parseGroup(), 1 / degree);
+        return constant(Math.pow(asNumber(this.parseGroup()), 1 / degree));
       }
       case 'sin':
-        return Math.sin(this.parseGroup());
+        return this.fn(Math.sin);
       case 'cos':
-        return Math.cos(this.parseGroup());
+        return this.fn(Math.cos);
       case 'tan':
-        return Math.tan(this.parseGroup());
+        return this.fn(Math.tan);
       case 'cot':
-        return 1 / Math.tan(this.parseGroup());
+        return this.fn((n) => 1 / Math.tan(n));
       case 'sec':
-        return 1 / Math.cos(this.parseGroup());
+        return this.fn((n) => 1 / Math.cos(n));
       case 'csc':
-        return 1 / Math.sin(this.parseGroup());
+        return this.fn((n) => 1 / Math.sin(n));
       case 'arcsin':
-        return Math.asin(this.parseGroup());
+        return this.fn(Math.asin);
       case 'arccos':
-        return Math.acos(this.parseGroup());
+        return this.fn(Math.acos);
       case 'arctan':
-        return Math.atan(this.parseGroup());
+        return this.fn(Math.atan);
       case 'sinh':
-        return Math.sinh(this.parseGroup());
+        return this.fn(Math.sinh);
       case 'cosh':
-        return Math.cosh(this.parseGroup());
+        return this.fn(Math.cosh);
       case 'tanh':
-        return Math.tanh(this.parseGroup());
+        return this.fn(Math.tanh);
       case 'ln':
-        return Math.log(this.parseGroup());
+        return this.fn(Math.log);
       case 'log':
-        return Math.log10(this.parseGroup());
+        return this.fn(Math.log10);
       case 'exp':
-        return Math.exp(this.parseGroup());
+        return this.fn(Math.exp);
       case 'abs':
-        return Math.abs(this.parseGroup());
+        return this.fn(Math.abs);
       default:
         throw new Error(`unknown command ${name}`);
     }
   }
 }
 
-function formatResult(value: number): EvaluationResult {
-  if (Number.isInteger(value)) {
-    return { value, display: String(value), approximate: false };
+function parseLinear(source: string): Linear {
+  const tokens = tokenize(source);
+  if (!tokens || tokens.length === 0) {
+    throw new Error('empty');
   }
+  return new Parser(tokens).parse();
+}
 
+function formatResult(value: number, variableName?: string): EvaluationResult {
   let display: string;
-  const magnitude = Math.abs(value);
-  if (magnitude !== 0 && (magnitude < 1e-4 || magnitude >= 1e9)) {
-    display = value.toPrecision(6).replace(/\.?0+($|e)/i, '$1');
+  let approximate: boolean;
+
+  if (Number.isInteger(value)) {
+    display = String(value);
+    approximate = false;
   } else {
-    const rounded = Math.round(value * 1e6) / 1e6;
-    display = String(rounded);
+    const magnitude = Math.abs(value);
+    if (magnitude !== 0 && (magnitude < 1e-4 || magnitude >= 1e9)) {
+      display = value.toPrecision(6).replace(/\.?0+($|e)/i, '$1');
+    } else {
+      display = String(Math.round(value * 1e6) / 1e6);
+    }
+    approximate = Math.abs(Number(display) - value) > 1e-12;
   }
 
-  const approximate = Math.abs(Number(display) - value) > 1e-12;
-  return { value, display, approximate };
+  return { value, display, approximate, variable: variableName };
 }
 
 /**
- * Evaluates a LaTeX expression to a single number when it is a self-contained
- * numeric calculation (no free variables). Returns null when the expression
- * cannot be evaluated — e.g. it contains variables, is an equation to solve,
- * or uses unsupported constructs.
+ * Evaluates a LaTeX expression when it resolves to a single number:
+ *  - a pure arithmetic expression ("3/4 + 1" → 1.75), or
+ *  - a single-variable linear equation, solved for the variable ("5y + 2 = 7" → y = 1).
+ *
+ * Returns null when it cannot — multiple variables, nonlinear terms, no unique
+ * solution, or unsupported constructs.
  */
 export function evaluateLatex(latex: string): EvaluationResult | null {
   if (!latex) {
     return null;
   }
 
-  // Evaluate the left-hand side of an equation/relation ("2+2=" → 4).
-  let expr = latex.trim();
-  if (expr.includes('=')) {
-    expr = expr.slice(0, expr.indexOf('='));
-  }
-  if (!expr.trim()) {
+  const sides = latex.split('=');
+  if (sides.length > 2) {
     return null;
   }
 
-  const tokens = tokenize(expr);
-  if (!tokens || tokens.length === 0) {
+  const leftStr = sides[0]?.trim() ?? '';
+  const rightStr = sides.length === 2 ? sides[1].trim() : null;
+  if (!leftStr && !rightStr) {
     return null;
   }
 
   try {
-    const value = new Parser(tokens).parse();
-    if (!Number.isFinite(value)) {
+    const left = leftStr ? parseLinear(leftStr) : null;
+    const right = rightStr !== null && rightStr ? parseLinear(rightStr) : null;
+
+    // No equation — just evaluate the expression to a number.
+    if (right === null) {
+      if (!left || left.a !== 0) {
+        return null;
+      }
+      const result = formatResult(left.k);
+      return Number.isFinite(result.value) ? result : null;
+    }
+    if (left === null) {
+      if (right.a !== 0) {
+        return null;
+      }
+      const result = formatResult(right.k);
+      return Number.isFinite(result.value) ? result : null;
+    }
+
+    // Equation: left = right.
+    const variableName = left.v ?? right.v;
+
+    // Both sides constant — show the computed value of the left side.
+    if (!variableName) {
+      const result = formatResult(left.k);
+      return Number.isFinite(result.value) ? result : null;
+    }
+
+    // a*var = -k  →  var = -k / a
+    const a = left.a - right.a;
+    const k = left.k - right.k;
+    if (a === 0) {
       return null;
     }
-    return formatResult(value);
+    const solution = -k / a;
+    if (!Number.isFinite(solution)) {
+      return null;
+    }
+    return formatResult(solution, variableName);
   } catch {
     return null;
   }

@@ -309,6 +309,9 @@ export default function App() {
             <div className={evaluation ? 'calc-box' : 'calc-box empty'}>
               {evaluation ? (
                 <div className="calc-result">
+                  {evaluation.variable ? (
+                    <span className="calc-var">{evaluation.variable}</span>
+                  ) : null}
                   <span className="calc-sign">{evaluation.approximate ? '≈' : '='}</span>
                   <span className="calc-number">{evaluation.display}</span>
                 </div>

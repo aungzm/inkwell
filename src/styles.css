@@ -582,6 +582,13 @@ button:disabled {
   color: var(--ink);
 }
 
+.calc-var {
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
+  font-style: italic;
+  font-weight: 700;
+  color: var(--ink);
+}
+
 .calc-sign {
   font-size: clamp(1.8rem, 3vw, 2.6rem);
   font-style: italic;
