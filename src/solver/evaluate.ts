@@ -100,9 +100,14 @@ function factorial(x: Linear): Linear {
   return constant(result);
 }
 
-function tokenize(input: string): Token[] | null {
+function tokenize(rawInput: string): Token[] | null {
   const tokens: Token[] = [];
   let i = 0;
+
+  // Recognizers often split a multi-digit number into spaced digits ("1 2"
+  // for "12"). Adjacent digits never mean multiplication in handwritten math,
+  // so glue digit runs separated only by whitespace back together.
+  const input = rawInput.replace(/(\d)\s+(?=[\d.])/g, '$1');
 
   while (i < input.length) {
     const c = input[i];
